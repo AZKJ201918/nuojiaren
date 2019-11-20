@@ -1,0 +1,19 @@
+<?xml   version="1.0" encoding="UTF-8"?>
+<!DOCTYPE mapper       PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"       "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<!--代理扫描  namespace属性表示当前代理的命名空间，
+    属性值一般情况下等于dao的接口类地址  相当于dao接口实现类   -->
+<mapper namespace="com.shopping.dao.OrderMapper">
+    <!--这里会有增删改查的标签-->
+    <select id="selectAllOrder" resultType="OrderEntity">
+        select id,orderid,finalprice,cid,status from orders
+        <where>
+           <if test="status!=null">
+               status=#{status}
+           </if>
+            <if test="uuid!=null">
+                and uid=#{uuid}
+            </if>
+            order by createtime DESC limit #{start},10
+        </where>
+    </select>
+</mapper>   
