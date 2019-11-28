@@ -45,7 +45,7 @@ public class RegisterController {
         ValueOperations ops = redisTemplate.opsForValue();
         try {
             sendSmsUtil.execute(phone,code+"");
-            ops.set(phone,code+"",5L, TimeUnit.MINUTES);
+            ops.set("phone:"+phone,code+"",5L, TimeUnit.MINUTES);
             result.setMessage("验证码发送正常");
         } catch (Exception e) {
             e.printStackTrace();
@@ -83,7 +83,7 @@ public class RegisterController {
         ValueOperations ops = redisTemplate.opsForValue();
         String code = registerEntity.getCode();
         String phone = registerEntity.getPhone();
-        String code1 = (String) ops.get(phone);
+        String code1 = (String) ops.get("phone:"+phone);
         if (code==null||!code.equals(code1)){
             result.setMessage("验证码输入错误");
             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);

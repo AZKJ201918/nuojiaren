@@ -113,25 +113,37 @@ public class IntegralCommodityController {
             boolean retry = true;
             do{
             if (lock.acquire(3000, TimeUnit.MILLISECONDS)) {
-                String ruuid = (String) ops.get(uuid);
+                String ruuid = (String) ops.get("uuid:"+uuid);
                 if (uuid == null || !uuid.equals(ruuid)) {
                     result.setCode(Constants.RESP_STATUS_BADREQUEST);
                     result.setMessage("用户未登录");
+                    if (lock!=null){
+                        lock.release();
+                    }
                     return result;
                 }
                 AddressEntity address = orderService.findAddressIdExsits(uuid, addressid);
                 if (address == null) {
+                    if (lock!=null){
+                        lock.release();
+                    }
                     throw new SuperMarketException("地址与用户信息不对应");
                 }
                 IntegralCommodity integralCommodity = integralCommodityService.findNeedIntegral(id);//商品需要的积分
                 Integer userIntegral = integralCommodityService.findUserIntegral(uuid);//用户的积分
                 Integer integral = integralCommodity.getIntegral();
                 if (userIntegral < integral) {
+                    if (lock!=null){
+                        lock.release();
+                    }
                     throw new SuperMarketException("你的积分不够");
                 }
                 Integer num = integralCommodity.getNum();//限购的次数
                 Integer count = integralCommodityService.findChangeNum(id, uuid);//找已经换购的次数
                 if (count >= num) {
+                    if (lock!=null){
+                        lock.release();
+                    }
                     throw new SuperMarketException("你达到限购的次数，无法兑换");
                 }
                 Double price = integralCommodityService.findPrice(id);//积分商品需要的价格
@@ -155,9 +167,11 @@ public class IntegralCommodityController {
                     orderCommodity.setNum(1);
                     orderCommodity.setOrderId(orderId);
                     integralCommodityService.addOrderCommodity(orderCommodity);//生成订单副单
-                    Integer reper = (Integer) hos.get(id + "", "repertory");
+                    Integer reper = (Integer) hos.get("repertory:"+id + "", "repertory");
                     if (reper == null) {
                         reper = shopCarService.findRepertory(id + "");
+                        Integer volumn=shopCarService.findVolumn(id);
+                        reper-=volumn;
                     }
                     if (reper < 1) {
                         orderService.modifyCommodityStatus(String.valueOf(id));
@@ -171,10 +185,10 @@ public class IntegralCommodityController {
                     posPrepay.setOperator_id(openid);
                     posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
                     reper -= 1;
-                    hos.put(id + "", "repertory", reper);//扣除库存
+                    hos.put("repertory:"+id + "", "repertory", reper);//扣除库存
                     Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
                     map.put("id", order.getId());
-                    ops.set(orderId, map.get("out_trade_no"), 3L, TimeUnit.MINUTES);
+                    ops.set("orderId:"+orderId, map.get("out_trade_no"), 3L, TimeUnit.MINUTES);
                     result.setData(map);
                     result.setMessage("支付成功");
                 } else {
@@ -186,15 +200,17 @@ public class IntegralCommodityController {
                     orderCommodity.setNum(1);
                     orderCommodity.setOrderId(orderId);
                     integralCommodityService.addOrderCommodity(orderCommodity);//生成订单副单
-                    Integer reper = (Integer) hos.get(id + "", "repertory");
+                    Integer reper = (Integer) hos.get("repertory:"+id + "", "repertory");
                     if (reper == null) {
                         reper = shopCarService.findRepertory(id + "");
+                        Integer volumn = shopCarService.findVolumn(id);
+                        reper-=volumn;
                     }
                     if (reper < 1) {
                         orderService.modifyCommodityStatus(String.valueOf(id));
                     }
                     reper -= 1;
-                    hos.put(id + "", "repertory", reper);//扣除库存
+                    hos.put("repertory:"+id + "", "repertory", reper);//扣除库存
                     Map<String, Object> map = new HashMap<>();
                     map.put("id", order.getId());
                     result.setData(map);

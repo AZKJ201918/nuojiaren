@@ -11,7 +11,7 @@ import java.util.List;
 
 @Mapper
 public interface DetailMapper {
-    @Select("select name,url,price,sales,repertory,detailurl,specsurl,saleurl from commodity where status=1 and id=#{id}")
+    @Select("select name,url,price,sales,repertory,detailurl,specsurl,saleurl,subname from commodity where status=1 and id=#{id}")
     List<CommodityEntity> selectDetailById(String id);
     @Select("select detailurl from detailbanner where cid=#{id} order by sort ASC")
     List<String> selectDetailBannerById(String id);

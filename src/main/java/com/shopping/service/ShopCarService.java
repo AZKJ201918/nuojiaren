@@ -1,6 +1,7 @@
 package com.shopping.service;
 
 
+import com.shopping.commons.exception.SuperMarketException;
 import com.shopping.entity.CommodityEntity;
 import com.shopping.entity.OrderCommodityEntity;
 import com.shopping.entity.OrderEntity;
@@ -12,7 +13,7 @@ import java.util.Set;
 public interface ShopCarService {
     CommodityEntity findCommodity(String id);
 
-    List<CommodityEntity> findShopCar(Set<String> set, Map<String,Integer> carMap);
+    List<CommodityEntity> findShopCar(Set<String> set, Map<String,Integer> carMap) throws SuperMarketException;
 
     Integer modifyOrderStatus(String orderId);
 
@@ -55,4 +56,10 @@ public interface ShopCarService {
     String findUid(String orderId);
 
     void modifyBeRetail(String uid);
+
+    Integer findVolumn(Integer id);
+
+    void addVolumnWater(OrderCommodityEntity orderCommodity);
+
+    void addRecord(Map<String, Integer> map);
 }

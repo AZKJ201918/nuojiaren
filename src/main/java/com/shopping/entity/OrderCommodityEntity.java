@@ -2,6 +2,8 @@ package com.shopping.entity;
 
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 public class OrderCommodityEntity {
 
@@ -16,4 +18,6 @@ public class OrderCommodityEntity {
     private String aid;
 
     private Integer oid;
+
+    private Date createtime;//商品流水的创建时间
 }

@@ -3,6 +3,7 @@ package com.shopping.dao;
 import com.shopping.entity.*;
 import org.apache.ibatis.annotations.*;
 
+import java.util.Date;
 import java.util.List;
 
 @Mapper
@@ -53,4 +54,8 @@ public interface OrderMapper {
     int selectOrderExsits(@Param("id") String id, @Param("orderId") String orderId, @Param("uuid") String uuid);
     @Select("select province,city from address where uid=#{uuid} and id=#{addressid}")
     AddressEntity selectAddressIdExists(@Param("uuid") String uuid,@Param("addressid") Integer addressid);
+    @Select("select status from orders where orderid=#{orderId} and uid=#{uuid}")
+    OrderEntity selectOrder(@Param("orderId") String orderId,@Param("uuid") String uuid);
+    @Update("update orders set status=4,recievetime=#{date} where orderid=#{orderId}")
+    int recieveOrders(@Param("orderId") String orderId, @Param("date") Date date);
 }

@@ -3,6 +3,7 @@ package com.shopping.controller;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import com.shopping.commons.constans.Constants;
+import com.shopping.commons.exception.SuperMarketException;
 import com.shopping.commons.resp.ApiResult;
 import com.shopping.entity.CommercialEntity;
 import com.shopping.entity.CommodityEntity;
@@ -50,6 +51,8 @@ public class ShopCarController {
     private ShopCarService shopCarService;
     @Autowired
     private DetailService detailService;
+    @Autowired
+    private OrderService orderService;
 
     @ApiOperation(value = "新增购物车", notes = "新增购物车", httpMethod = "POST")
     @ApiImplicitParam
@@ -80,18 +83,22 @@ public class ShopCarController {
             return result;
         }*/
         //暂时隐藏起来
-        String ruuid = (String) ops.get(uuid);
+        String ruuid = (String) ops.get("uuid:"+uuid);
         if (uuid==null||ruuid==null||!uuid.equals(ruuid)){
             result.setCode(Constants.RESP_STATUS_BADREQUEST);
             result.setMessage("用户未登录");
             return result;
         }
-        Integer repertory= (Integer) hos.get(id,"repertory");
+        Integer repertory= (Integer) hos.get("repertory:"+id,"repertory");
         System.out.println(id+"库存是"+repertory);
         if (repertory==null){
-           Integer reper=shopCarService.findRepertory(id);
-           hos.put(id,"repertory",reper);
-           repertory=reper;
+            Integer reper=shopCarService.findRepertory(id);
+            Integer volumn = shopCarService.findVolumn(Integer.parseInt(id));
+            repertory=reper-volumn;
+            hos.put("repertory:"+id,"repertory",repertory);
+        }
+        if (repertory<=0){//没有库存，把商品下架
+            orderService.modifyCommodityStatus(id);
         }
         if (repertory-num<0){
             result.setMessage("商品库存不足，您最多可以添加到购物车的数量是"+repertory);
@@ -99,12 +106,16 @@ public class ShopCarController {
             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
             return result;
         }
-        Integer carNum = (Integer) hos.get(uuid, id);
+        Boolean flag1 = hos.hasKey("shopCar:"+uuid,"shopCar:"+id);
+        Integer carNum=null;
+        if (flag1){
+            carNum = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);
+        }
         if (carNum != null) {
             carNum += num;
-            hos.put(uuid, id, carNum);
+            hos.put("shopCar:"+uuid,"shopCar:"+id, carNum);
         } else {
-            hos.put(uuid, id, num);
+            hos.put("shopCar:"+uuid, "shopCar:"+id, num);
         }
         result.setMessage("购物车新增成功");
         result.setData(4);
@@ -119,12 +130,16 @@ public class ShopCarController {
         HashMap<String, Object> map = new HashMap<>();
         try {
             HashOperations hos = redisTemplate.opsForHash();
-            Map<String, Integer> carMap = hos.entries(uuid);
+            Map<String, Integer> carMap = hos.entries("shopCar:"+uuid);
             Set<String> set = carMap.keySet();
             List<CommodityEntity> commodity = shopCarService.findShopCar(set, carMap);
             map.put("commodity", commodity);
             result.setData(map);
             result.setMessage("购物车查看成功");
+        } catch (SuperMarketException e) {
+            e.printStackTrace();
+            result.setMessage(e.getMessage());
+            result.setCode(Constants.RESP_STATUS_BADREQUEST);
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("后台服务器异常");
@@ -139,7 +154,7 @@ public class ShopCarController {
     public ApiResult deleteShopCar(String uuid, String id) {
         ApiResult<Object> result = new ApiResult<>();
         ValueOperations ops = redisTemplate.opsForValue();
-        String ruuid = (String) ops.get(uuid);
+        String ruuid = (String) ops.get("uuid:"+uuid);
         if (uuid==null||!uuid.equals(ruuid)){
             result.setCode(Constants.RESP_STATUS_BADREQUEST);
             result.setMessage("用户未登录");
@@ -147,8 +162,14 @@ public class ShopCarController {
         }
         try {
             HashOperations hos = redisTemplate.opsForHash();
-            hos.delete(uuid, id);
-            result.setMessage("删除购物车成功");
+            Boolean flag = hos.hasKey("shopCar:"+uuid,"shopCar:"+id);
+            if (flag){
+                hos.delete("shopCar:"+uuid,"shopCar:"+id);
+                result.setMessage("删除购物车成功");
+            }else {
+                result.setMessage("删除购物车失败");
+                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+            }
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");
@@ -163,7 +184,7 @@ public class ShopCarController {
     public ApiResult updateShopCar(String uuid, String id, Integer num) {
         ApiResult<Object> result = new ApiResult<>();
         ValueOperations ops = redisTemplate.opsForValue();
-        String ruuid = (String) ops.get(uuid);
+        String ruuid = (String) ops.get("uuid:"+uuid);
         if (uuid==null||!uuid.equals(ruuid)){
             result.setCode(Constants.RESP_STATUS_BADREQUEST);
             result.setMessage("用户未登录");
@@ -172,7 +193,24 @@ public class ShopCarController {
         try {
             HashOperations hos = redisTemplate.opsForHash();
             System.out.println(num.longValue());
-            hos.put(uuid, id, num);
+            Integer repertory= (Integer) hos.get("repertory:"+id,"repertory");
+            System.out.println(id+"库存是"+repertory);
+            if (repertory==null){
+                Integer reper=shopCarService.findRepertory(id);
+                Integer volumn = shopCarService.findVolumn(Integer.parseInt(id));
+                repertory=reper-volumn;
+                hos.put("repertory:"+id,"repertory",repertory);
+            }
+            if (repertory<=0){//没有库存，把商品下架
+                orderService.modifyCommodityStatus(id);
+            }
+            if (repertory-num<0){
+                result.setMessage("商品库存不足，您最多可以添加到购物车的数量是"+repertory);
+                result.setData(3);
+                result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+                return result;
+            }
+            hos.put("shopCar:"+uuid,"shopCar:"+id, num);
             result.setMessage("购物车数量修改成功");
         } catch (Exception e) {
             e.printStackTrace();
@@ -258,7 +296,7 @@ public class ShopCarController {
                 String resCode = jsonObject.get("result_code") + "";
                 String returnCode = jsonObject.get("return_code") + "";
                 ValueOperations ops = redisTemplate.opsForValue();
-                String  out_trade_no= (String) ops.get(orderId);
+                String  out_trade_no= (String) ops.get("orderId:"+orderId);
                 if (out_trade_no==null){
                     map.put("return_msg","没有支付,无法回调");
                     map.put("return_code","01");
@@ -270,12 +308,13 @@ public class ShopCarController {
                // shopCarService.modifyNum(orderId);
                 List<OrderCommodityEntity> orderCommodityList=shopCarService.findCidAndNum(orderId);
                 for (OrderCommodityEntity orderCommodity:orderCommodityList){//把订单的商品的数量记录在流水里
-                    Integer id=shopCarService.findVolumnId(orderCommodity.getCid());
+                    /*Integer id=shopCarService.findVolumnId(orderCommodity.getCid());
                     if(id!=null){
                         shopCarService.modifyVolumn(orderCommodity);
                     }else {
                         shopCarService.addVolumn(orderCommodity);
-                    }
+                    }*/
+                    shopCarService.addVolumnWater(orderCommodity);
                 }
                 CommodityEntity commodity=null;
                 boolean flag=false;
@@ -293,7 +332,6 @@ public class ShopCarController {
                     OrderEntity order = shopCarService.findPrice(orderId);//把用户消费的积分加进去
                     //分销加钱
                     shopCarService.retailMoney(orderId);
-
                 }
                 if (flag1){//能够成为分销商
                      String uid=shopCarService.findUid(orderId);

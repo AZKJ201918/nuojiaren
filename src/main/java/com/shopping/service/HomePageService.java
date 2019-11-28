@@ -15,7 +15,7 @@ public interface HomePageService {
 
     List<OptionEntity> findAllOption() throws SuperMarketException;
 
-    String findUserByOpenid(String openid);
+    WxUser findUserByOpenid(String openid);
 
     String findSuperioridByOpenid(String openid);
 

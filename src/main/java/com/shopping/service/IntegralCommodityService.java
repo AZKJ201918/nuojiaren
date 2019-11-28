@@ -11,7 +11,7 @@ import java.util.List;
 public interface IntegralCommodityService {
     List<CommodityEntity> findIntegralCommodity() throws SuperMarketException;
 
-    CommodityEntity findIntegralCommodityDetail(Integer id);
+    CommodityEntity findIntegralCommodityDetail(Integer id) throws SuperMarketException;
 
     IntegralCommodity findNeedIntegral(Integer id) throws SuperMarketException;
 

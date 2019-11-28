@@ -14,23 +14,23 @@ public interface HomePageMapper {
     //商品没有下架，并且不是积分商品
     @Select("select id,name,url,price,sales,repertory,subname from commodity where status=1 and isintegral=0 order by createTime DESC limit #{start},8")
     List<CommodityEntity> selectAllCommodity(Integer start);
-    @Select("select subtract,aid from commercial where cid=#{id}")
+    @Select("select subtract,aid,discount from commercial where cid=#{id}")
     CommercialEntity selectSubtractByCid(Integer id);
     @Select("select name,imgurl,linkurl,linkid,linktype from options where status=1")
     List<OptionEntity> selectAllOption();
-    @Select("select uuid from wxuser where openid=#{openid}")
-    String selectUserByOpenid(String openid);
+    @Select("select uuid,createtime from wxuser where openid=#{openid}")
+    WxUser selectUserByOpenid(String openid);
     @Select("select superiorid from wxuser where openid=#{openid}")
     String selectSuperioridByOpenid(String openid);
     @Select("select")
     String selectShareIdByUUID(String uuid);
-    @Insert("insert into wxuser (uuid,openid,nickname,headimgurl,superiorid) values (#{uuid},#{openid},#{nickname},#{headimgurl},#{superiorid})")
+    @Insert("insert into wxuser (uuid,openid,nickname,headimgurl,superiorid,createtime) values (#{uuid},#{openid},#{nickname},#{headimgurl},#{superiorid},#{createtime})")
     int insertWeixinUser(WxUser user);
-    @Insert("insert into wxuser (uuid,openid,nickname,headimgurl) values (#{uuid},#{openid},#{nickname},#{headimgurl})")
+    @Insert("insert into wxuser (uuid,openid,nickname,headimgurl,createtime) values (#{uuid},#{openid},#{nickname},#{headimgurl},#{createtime})")
     int insertWeixinUser1(WxUser user);
-    @Update("update wxuser set nickname=#{nickname},headimgurl=#{headimgurl},superiorid=#{superiorid} where uuid=#{uuid}")
+    @Update("update wxuser set nickname=#{nickname},headimgurl=#{headimgurl},superiorid=#{superiorid},createtime=#{createtime} where uuid=#{uuid}")
     int updateWeixinUser(WxUser user1);
-    @Update("update wxuser set nickname=#{nickname},headimgurl=#{headimgurl} where uuid=#{uuid}")
+    @Update("update wxuser set nickname=#{nickname},headimgurl=#{headimgurl},createtime=#{createtime} where uuid=#{uuid}")
     int updateWeixinUser1(WxUser user1);
     @Select("select nickname,headimgurl from wxuser where uuid=#{uid} ")
     WxUser selectwxnameAndHeadimgurl(String uid);

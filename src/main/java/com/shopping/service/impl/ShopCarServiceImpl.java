@@ -44,8 +44,11 @@ public class ShopCarServiceImpl implements ShopCarService{
     }
 
     @Override
-    public List<CommodityEntity> findShopCar(Set<String> set,Map<String,Integer> carMap) {
+    public List<CommodityEntity> findShopCar(Set<String> set,Map<String,Integer> carMap) throws SuperMarketException {
         //把商品id遍历出来，变成字符串
+        if (set==null){
+            throw new SuperMarketException("暂无购物车信息");
+        }
         String m="";
         for (String s:set){
             m+=s+",";
@@ -62,6 +65,9 @@ public class ShopCarServiceImpl implements ShopCarService{
                 CommercialEntity commercial = homePageMapper.selectActiveByCid(commodity.getId());
                 commodity.setCommercial(commercial);
                 Integer carNum = carMap.get(commodity.getId().toString());
+                if (carNum==null){
+                    throw new SuperMarketException("暂无购物车信息");
+                }
                 System.out.println("carNum:"+carNum);
                 commodity.setCarNum(carNum);
                 //commodities.add(commodity);
@@ -181,16 +187,32 @@ public class ShopCarServiceImpl implements ShopCarService{
        List<CommodityEntity>commodityList=shopCarMapper.selectIdAndRepertory();
        for (CommodityEntity commodity:commodityList){
            Integer id = commodity.getId();
-           Integer volumn=shopCarMapper.selectVolumn(id);
-           if (volumn==null){
+           Date date = new Date();
+           long time = date.getTime();
+           long l = time - 86400000;
+           Date date1 = new Date(l);
+           List<Integer> numList=shopCarMapper.selectVolumnWater(id,date1,date);
+           if (numList==null){
                continue;
            }
+           Integer volumn=0;
+           for (Integer num:numList){
+               volumn+=num;
+           }
            shopCarMapper.updateReper(volumn,id);
+           Integer volumnId = shopCarMapper.selectVolumnId(id);
+           if (volumnId==null){
+               shopCarMapper.insertVolumn(volumn,id);
+           }else {
+               shopCarMapper.updateVolumn(volumn,id);
+           }
        }
        //把商品每天的流水变成0
-        shopCarMapper.changeVolumn();
+        //shopCarMapper.changeVolumn();
        //把所有签到变成未签到
         shopCarMapper.updateIsSign();
+       //把访问的信息放到数据库
+
     }
 
     @Override
@@ -205,12 +227,12 @@ public class ShopCarServiceImpl implements ShopCarService{
 
     @Override
     public void modifyVolumn(OrderCommodityEntity orderCommodity) {
-        shopCarMapper.updateVolumn(orderCommodity);
+        //shopCarMapper.updateVolumn(orderCommodity);
     }
 
     @Override
     public void addVolumn(OrderCommodityEntity orderCommodity) {
-         shopCarMapper.insertVolumn(orderCommodity);
+         //shopCarMapper.insertVolumn(orderCommodity);
     }
 
     @Override
@@ -237,7 +259,8 @@ public class ShopCarServiceImpl implements ShopCarService{
                         if (parenttype==1){//直接加钱
                              totalParentMoney+=parent*num;
                         }else {//算出优惠总价乘以分销比例
-                            String aid=detailMapper.selectActiveById(String.valueOf(id));
+                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                            String aid = commercial.getAid();
                             System.out.println(aid);
                             List<String> actives=detailMapper.selectActiveSortByAid(aid);
                             System.out.println(actives);
@@ -251,13 +274,14 @@ public class ShopCarServiceImpl implements ShopCarService{
                         }
 
                     }else {//分销过期，查看全局分销
-                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail(id);
+                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
                         Double wholeparent = wholeRetail.getWholeparent();
                         Integer parenttype = wholeRetail.getParenttype();
                         if (parenttype==1){//直接加钱
                             totalParentMoney+=wholeparent*num;
                         }else {
-                            String aid=detailMapper.selectActiveById(String.valueOf(id));
+                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                            String aid = commercial.getAid();
                             System.out.println(aid);
                             List<String> actives=detailMapper.selectActiveSortByAid(aid);
                             System.out.println(actives);
@@ -307,7 +331,8 @@ public class ShopCarServiceImpl implements ShopCarService{
                         if (grandtype==1){//直接加钱
                             totalGrandMoney+=grand*num;
                         }else {//算出优惠总价乘以分销比例
-                            String aid=detailMapper.selectActiveById(String.valueOf(id));
+                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                            String aid = commercial.getAid();
                             System.out.println(aid);
                             List<String> actives=detailMapper.selectActiveSortByAid(aid);
                             System.out.println(actives);
@@ -320,13 +345,14 @@ public class ShopCarServiceImpl implements ShopCarService{
                             totalGrandMoney+=totalPrice*grand;
                         }
                     }else {//分销过期，查看全局分销
-                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail(id);
+                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
                         Double wholegrand = wholeRetail.getWholegrand();
                         Integer grandtype = wholeRetail.getGrandtype();
                         if (grandtype==1){//直接加钱
                             totalGrandMoney+=wholegrand*num;
                         }else {
-                            String aid=detailMapper.selectActiveById(String.valueOf(id));
+                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                            String aid = commercial.getAid();
                             System.out.println(aid);
                             List<String> actives=detailMapper.selectActiveSortByAid(aid);
                             System.out.println(actives);
@@ -370,5 +396,23 @@ public class ShopCarServiceImpl implements ShopCarService{
     @Override
     public void modifyBeRetail(String uid) {
         shopCarMapper.updateBeRetail(uid);
+    }
+
+    @Override
+    public Integer findVolumn(Integer id) {
+        String format = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+        return shopCarMapper.selectVolumn(id,format);
+    }
+
+    @Override
+    public void addVolumnWater(OrderCommodityEntity orderCommodity) {
+        orderCommodity.setCreatetime(new Date());
+        shopCarMapper.insertVolumnWater(orderCommodity);
+    }
+
+    @Override
+    public void addRecord(Map<String, Integer> map) {
+        Date date = new Date();
+        shopCarMapper.insertRecord(map,date);
     }
 }

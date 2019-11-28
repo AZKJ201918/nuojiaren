@@ -10,6 +10,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -132,6 +133,17 @@ public class OrderServiceImpl implements OrderService {
     @Override
     public AddressEntity findAddressIdExsits(String uuid, Integer addressid) {
         return orderMapper.selectAddressIdExists(uuid,addressid);
+    }
+
+    @Override
+    public OrderEntity findOrder(String orderId, String uuid) {
+        return orderMapper.selectOrder(orderId,uuid);
+    }
+
+    @Override
+    public void signOrders(String orderId) {
+        Date date = new Date();
+        orderMapper.recieveOrders(orderId,date);
     }
 
 

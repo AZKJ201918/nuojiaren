@@ -27,8 +27,11 @@ public class IntegralCommodityServiceImpl implements IntegralCommodityService{
     }
 
     @Override
-    public CommodityEntity findIntegralCommodityDetail(Integer id) {
+    public CommodityEntity findIntegralCommodityDetail(Integer id) throws SuperMarketException {
         CommodityEntity commodity = integralCommodityMapper.selectIntegralCommodityDetail(id);
+        if (commodity==null){
+            throw new SuperMarketException("没有积分商品");
+        }
         Integer integral=integralCommodityMapper.selectCommodityIntegral(id);
         commodity.setIntegral(integral);
         return commodity;

@@ -3,7 +3,9 @@ package com.shopping.dao;
 import com.shopping.entity.*;
 import org.apache.ibatis.annotations.*;
 
+import java.util.Date;
 import java.util.List;
+import java.util.Map;
 
 @Mapper
 public interface ShopCarMapper {
@@ -44,18 +46,18 @@ public interface ShopCarMapper {
     String selectCAid(Integer id);
     @Select("select id,repertory from commodity")
     List<CommodityEntity> selectIdAndRepertory();
-    @Select("select volumn from volumn where cid=#{id}")
-    Integer selectVolumn(Integer id);
+    @Select("select ifnull(sum(num),0) from volumnwater where cid=#{id} and date(createtime)=#{format}")
+    Integer selectVolumn(@Param("id") Integer id,@Param("format")String format);
     @Update("update commodity set repertory=repertory-#{volumn} where id=#{id}")
     int updateReper(@Param("volumn") Integer volumn,@Param("id") Integer id);//库存减去流水
     @Select("select cid,num from ordercommodity where orderid=#{orderId}")
     List<OrderCommodityEntity> selectCidAndNum(String orderId);
     @Select("select id from volumn where cid=#{cid}")
     Integer selectVolumnId(Integer cid);
-    @Update("update volumn set volumn=volumn+#{num},totalvolumn=totalvolumn+#{num} where cid=#{cid}")//根据非主键cid修改流水
-    int updateVolumn(OrderCommodityEntity orderCommodity);
-    @Insert("insert into volumn (volumn,cid,totalvolumn) values (#{num},#{cid},#{num})")
-    int insertVolumn(OrderCommodityEntity orderCommodity);
+    @Update("update volumn set totalvolumn=totalvolumn+#{volumn} where cid=#{id}")//根据非主键cid修改流水
+    int updateVolumn(@Param("volumn") Integer volumn,@Param("id") Integer id);
+    @Insert("insert into volumn (cid,totalvolumn) values (#{id},#{volumn})")
+    int insertVolumn(@Param("volumn") Integer volumn,@Param("id") Integer id);
     @Select("select uid,cid from orders where orderid=#{orderId}")
     OrderEntity selectUUIDByOrderId(String orderId);
     @Select("select superiorid from wxuser where uuid=#{uuid}")
@@ -64,8 +66,8 @@ public interface ShopCarMapper {
     Integer selectRetail(Integer id);
     @Select("select parent,grand,parenttype,grandtype,outtime from retail where cid=#{id}")
     RetailEntity selectRetailInfo(Integer id);
-    @Select("select wholeparent,wholegrand,parenttype,grandtype from wholeretail where cid=#{id}")
-    WholeRetailEntity selectWholeRetail(Integer id);
+    @Select("select wholeparent,wholegrand,parenttype,grandtype from wholeretail")
+    WholeRetailEntity selectWholeRetail();
     @Update("update wxuser set retailmoney=retailmoney+#{totalParentMoney} where uuid=#{superiorid}")
     int updateRetailMoney(@Param("totalParentMoney") Double totalParentMoney,@Param("superiorid") String superiorid);
     @Select("select nickname from wxuser where uuid=#{uid}")
@@ -82,4 +84,10 @@ public interface ShopCarMapper {
     String selectUid(String orderId);
     @Update("update wxuser set isretail=1 where uuid=#{uid}")
     int updateBeRetail(String uid);
+    @Insert("insert into volumnwater (num,cid,createtime) values (#{num},#{cid},#{createtime})")
+    int insertVolumnWater(OrderCommodityEntity orderCommodity);
+    @Select("select num from volumnwater where #{date1}>createtime>=#{date} and cid=#{id}")
+    List<Integer> selectVolumnWater(Integer id, Date date1, Date date);
+    @Insert("insert into record (visit,register,date) values (#{visit},#{register},#{date})")
+    int insertRecord(@Param("map") Map<String, Integer> map,@Param("date") Date date);
 }

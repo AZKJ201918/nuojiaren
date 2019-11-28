@@ -20,7 +20,7 @@ public interface IntegralCommodityMapper {
     Integer selectUserIntegral(String uuid);
     @Select("select count(*) from orders where uid=#{uuid} and cid=#{id}")
     Integer selectChangeNum(@Param("id") Integer id,@Param("uuid") String uuid);
-    @Select("select price from commodity where id=#{id}")
+    @Select("select postage from commodity where id=#{id}")
     Double selectPrice(Integer id);
     @Insert("insert into orders (uid,orderid,price,finalprice,addressid,cid,status,createtime,closetime) values (#{uid},#{orderid},#{price},#{finalprice},#{addressid},#{cid},#{status},#{createtime},#{closetime})")
     @Options(useGeneratedKeys=true, keyProperty="id", keyColumn="id")

@@ -2,6 +2,8 @@ package com.shopping.entity;
 
 import lombok.Data;
 
+import java.util.Date;
+
 @Data
 public class WxUser {
 
@@ -21,5 +23,6 @@ public class WxUser {
 
     private Double retailMoney;
 
+    private Date createtime;
 
 }

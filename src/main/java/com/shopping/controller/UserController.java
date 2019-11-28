@@ -61,7 +61,7 @@ public class UserController {
         ApiResult<List<AddressEntity>> result=new ApiResult<>();
         ValueOperations ops = redisTemplate.opsForValue();
         try {
-            String ruuid = (String) ops.get(uid);
+            String ruuid = (String) ops.get("uuid:"+uid);
             if (uid==null||ruuid==null||!uid.equals(ruuid)){
                 result.setCode(Constants.RESP_STATUS_BADREQUEST);
                 result.setMessage("用户未登录");
@@ -117,7 +117,6 @@ public class UserController {
     @Transactional
     public ApiResult changeAddressStatus(String id,String uid){
         ApiResult result=new ApiResult();
-
         try {
             userService.changeMrAddress(uid);//将用户的已存默认地址修改为非默认
             userService.changeAddressStatus(id);//将用户的现地址修改为默认

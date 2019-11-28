@@ -40,4 +40,7 @@ public interface OrderService {
 
     AddressEntity findAddressIdExsits(String uuid, Integer addressid);
 
+    OrderEntity findOrder(String orderId, String uuid);
+
+    void signOrders(String orderId);
 }

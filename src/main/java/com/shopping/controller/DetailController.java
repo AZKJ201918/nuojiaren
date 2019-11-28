@@ -2,6 +2,7 @@ package com.shopping.controller;
 
 import com.shopping.commons.constans.Constants;
 import com.shopping.commons.resp.ApiResult;
+import com.shopping.entity.CommercialEntity;
 import com.shopping.entity.CommodityEntity;
 import com.shopping.service.DetailService;
 import com.shopping.service.PriceService;
@@ -57,7 +58,8 @@ public class DetailController {
     @PostMapping("/countPrice")
     public ApiResult countPrice(String id,Integer num,String uuid){
         ApiResult<Object> result = new ApiResult<>();
-        String aid=detailService.findActiveById(id);
+        CommercialEntity commercial=detailService.findActiveById(id);
+        String aid = commercial.getAid();
         System.out.println(aid);
         List<String> actives=detailService.findActiveSortByAid(aid);
         System.out.println(actives);

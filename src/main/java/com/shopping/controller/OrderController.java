@@ -191,21 +191,32 @@ public class OrderController {
                     List<String> ids= (List<String>) dataMap.get("ids");
                     Integer addressid= (Integer) dataMap.get("addressid");
                     Integer number= (Integer) dataMap.get("number");
-                    String ruuid = (String) ops.get(uuid);
+                    String ruuid = (String) ops.get("uuid:"+uuid);
                     if (uuid==null||!uuid.equals(ruuid)){
+                        if (lock!=null){
+                            lock.release();
+                        }
                         result.setCode(Constants.RESP_STATUS_BADREQUEST);
                         result.setMessage("用户未登录");
                         return result;
                     }
                     AddressEntity address=orderService.findAddressIdExsits(uuid,addressid);
                     if (address==null){
+                        if (lock!=null){
+                            lock.release();
+                        }
                         result.setMessage("地址与用户信息不对应");
                         result.setCode(Constants.RESP_STATUS_BADREQUEST);
                         return result;
                     }
                     if (id1!=null&&number!=null){
-                        Integer repertory = (Integer) hos.get(id1, "repertory");
-                        if (repertory==0){//没有库存，把商品下架
+                        Integer repertory = (Integer) hos.get("repertory:"+id1, "repertory");
+                        if (repertory == null) {
+                            repertory = shopCarService.findRepertory(id1 + "");
+                            Integer volumn=shopCarService.findVolumn(Integer.parseInt(id1));
+                            repertory-=volumn;
+                        }
+                        if (repertory<=0){//没有库存，把商品下架
                             orderService.modifyCommodityStatus(id1);
                         }
                         if (repertory-number<0){
@@ -272,9 +283,9 @@ public class OrderController {
                         orderCommodity.setOrderId(order.getOrderid());
                         orderCommodity.setOid(oid);
                         shopCarService.addOrderCommodity(orderCommodity);
-                        Integer reper= (Integer) hos.get(id1,"repertory");
+                        Integer reper= (Integer) hos.get("repertory:"+id1,"repertory");
                         reper-=number;
-                        hos.put(id1,"repertory",reper);
+                        hos.put("repertory:"+id1,"repertory",reper);
                         //最终支付
                         PosPrepay posPrepay=new PosPrepay();
                         String openid = shopCarService.findOpenid(uuid);
@@ -285,7 +296,7 @@ public class OrderController {
                         posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
                         Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
                         map.put("id",order.getId());
-                        ops.set(order.getOrderid(),map.get("out_trade_no"),3L,TimeUnit.MINUTES);
+                        ops.set("orderId:"+order.getOrderid(),map.get("out_trade_no"),3L,TimeUnit.MINUTES);
                         result.setData(map);
                         result.setMessage("支付成功");
                     }
@@ -296,16 +307,25 @@ public class OrderController {
                         String orderId = DateUtil.getOrderIdByTime();
                         for (String id:ids){
                             double totalPrice=0;
-                            Integer num = (Integer) hos.get(uuid, id);
-                            Integer repertory = (Integer) hos.get(id, "repertory");
-                            if (repertory==0){//没有库存，把商品下架
+                            Integer num = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);
+                            Integer repertory = (Integer) hos.get("repertory:"+id, "repertory");
+                            if (repertory == null) {
+                                repertory = shopCarService.findRepertory(id + "");
+                                //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                                //repertory-=volumn;
+                                Integer volumn=shopCarService.findVolumn(Integer.parseInt(id1));
+                                repertory-=volumn;
+                            }
+                            if (repertory<=0){//没有库存，把商品下架
                                 orderService.modifyCommodityStatus(id);
                             }
                             if (repertory-num<0){
                                 result.setMessage("库存不足");
                                 result.setData(id);
                                 result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
-                                lock.release();
+                                if (lock!=null){
+                                    lock.release();
+                                }
                                 return result;
                             }
                             CommercialEntity commercial= detailService.findActiveById(id);
@@ -367,11 +387,18 @@ public class OrderController {
                         //shopCarService.modifyOid(oid,orderId);无需加入oid，已经有唯一标识orderId
                         //订单完成立即扣除库存
                         for (String id:ids){
-                            Integer reper= (Integer) hos.get(id,"repertory");//库存
-                            Integer num = (Integer) hos.get(uuid, id);//购物车数量
+                            Integer reper= (Integer) hos.get("repertory:"+id,"repertory");//库存
+                            Integer num = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);//购物车数量
+                            if (reper == null) {
+                                reper = shopCarService.findRepertory(id + "");
+                                //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                                //reper-=volumn;
+                                Integer volumn=shopCarService.findVolumn(Integer.parseInt(id1));
+                                reper-=volumn;
+                            }
                             reper-=num;
-                            hos.put(id,"repertory",reper);
-                            hos.delete(uuid,id);//清空购物车信息
+                            hos.put("repertory:"+id,"repertory",reper);
+                            hos.delete("shopCar:"+uuid,"shopCar:"+id);//清空购物车信息
                         }
 
 
@@ -385,7 +412,7 @@ public class OrderController {
                         posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
                         Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
                         map.put("id",order.getId());
-                        ops.set(orderId,map.get("out_trade_no"),3L,TimeUnit.MINUTES);
+                        ops.set("orderId:"+orderId,map.get("out_trade_no"),3L,TimeUnit.MINUTES);
                         result.setData(map);
                         result.setMessage("支付成功");
                         System.out.println("走到支付完成");
@@ -452,7 +479,7 @@ public class OrderController {
         ApiResult<Object> result = new ApiResult<>();
         ValueOperations ops = redisTemplate.opsForValue();
         try {
-            String ruuid = (String) ops.get(uuid);
+            String ruuid = (String) ops.get("uuid:"+uuid);
             if (uuid==null||!uuid.equals(ruuid)){
                 result.setCode(Constants.RESP_STATUS_BADREQUEST);
                 result.setMessage("用户未登录");
@@ -482,7 +509,7 @@ public class OrderController {
         HashOperations hos = redisTemplate.opsForHash();
         ValueOperations ops = redisTemplate.opsForValue();
         try {
-            String ruuid = (String) ops.get(uuid);
+            String ruuid = (String) ops.get("uuid:"+uuid);
             if (uuid==null||!uuid.equals(ruuid)){
                 result.setCode(Constants.RESP_STATUS_BADREQUEST);
                 result.setMessage("用户未登录");
@@ -494,9 +521,16 @@ public class OrderController {
                 //String orderId=orderService.selectOrderIdById(id);
                 List<OrderCommodityEntity> orderCommodity=orderService.findCidAndNum(orderId);
                 for (OrderCommodityEntity orderCommodit:orderCommodity){//取消订单库存加上去
-                    Integer repertory = (Integer) hos.get(orderCommodit.getCid()+"", "repertory");
+                    Integer repertory = (Integer) hos.get("repertory:"+orderCommodit.getCid()+"", "repertory");
+                    if (repertory == null) {
+                        repertory = shopCarService.findRepertory(id + "");
+                        //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                        //repertory-=volumn;
+                        Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                        repertory-=volumn;
+                    }
                     repertory+=orderCommodit.getNum();
-                    hos.put(orderCommodit.getCid()+"","repertory",repertory);
+                    hos.put("repertory:"+orderCommodit.getCid()+"","repertory",repertory);
                 }
                 result.setMessage("取消订单成功");
             }else {
@@ -507,6 +541,40 @@ public class OrderController {
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");
+            result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+        }
+        return result;
+    }
+    @ApiOperation(value = "订单签收" ,notes = "订单签收",httpMethod = "POST")
+    @ApiImplicitParam
+    @PostMapping("/signOrder")
+    public ApiResult signOrder(String orderId,String uuid){
+        ApiResult<Object> result = new ApiResult<>();
+        try {
+            ValueOperations ops = redisTemplate.opsForValue();
+            String ruuid = (String) ops.get(uuid);
+            if (uuid==null||!uuid.equals(ruuid)){
+                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                result.setMessage("用户未登录");
+                return result;
+            }
+            OrderEntity order=orderService.findOrder(orderId,uuid);
+            Integer status = order.getStatus();
+            if (status==null){
+                result.setMessage("不是本人的订单，不能签收");
+                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                return result;
+            }
+            if (status!=2&&status!=3){
+                result.setMessage("未付款或者没有发货的订单不能签收");
+                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                return result;
+            }
+            orderService.signOrders(orderId);
+            result.setMessage("订单签收成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.setMessage("后台服务器异常");
             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
         }
         return result;

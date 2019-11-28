@@ -30,8 +30,10 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.io.IOException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 
 import static com.shopping.util.EncodeUtil.getUserInfo;
 
@@ -44,6 +46,10 @@ public class HomePageController {
     private HomePageService homePageService;
     @Autowired
     private RedisTemplate redisTemplate;
+
+    private static AtomicInteger registerCount = new AtomicInteger(0);
+
+    private static AtomicInteger visitCount = new AtomicInteger(0);
     @ApiOperation(value = "轮播图",notes = "轮播图",httpMethod = "GET")
     @ApiImplicitParam
     @GetMapping("/banner")
@@ -146,13 +152,14 @@ public class HomePageController {
             System.out.println(nickName);*/
             //wxuser.setWopenId(openid);
             //先查询openId存在不存在，存在不入库，不存在就入库
-            String userUUID = homePageService.findUserByOpenid(openid);
+            WxUser findUser = homePageService.findUserByOpenid(openid);
             String session_key = "";
             session_key = tempMap.get("session_key").toString();
             Map<String,String> userMap = getUserInfo(encryptedData, session_key, iv);
             String nickName = userMap.get("nickName");
             String headimgurl = userMap.get("avatarUrl");
             ValueOperations ops = redisTemplate.opsForValue();
+            String userUUID = findUser.getUuid();
             if(userUUID != null){//用户信息已经初始化
                 log.info("openId已经存在,不需要插入");
                 WxUser user1 = new WxUser();
@@ -164,6 +171,7 @@ public class HomePageController {
                             user1.setHeadimgurl(headimgurl);
                             user1.setNickname(nickName);
                             user1.setSuperiorid(uuid);
+                            user1.setCreatetime(new Date());
                             homePageService.modifyWeixinUser(user1);
                         }
                         result.setData(userUUID);
@@ -172,6 +180,7 @@ public class HomePageController {
                         user1.setUuid(userUUID);
                         user1.setHeadimgurl(headimgurl);
                         user1.setNickname(nickName);
+                        user1.setCreatetime(new Date());
                         homePageService.modifyWeixinUser1(user1);
                         result.setData(userUUID);
                     }
@@ -180,10 +189,21 @@ public class HomePageController {
                     user1.setUuid(userUUID);
                     user1.setHeadimgurl(headimgurl);
                     user1.setNickname(nickName);
+                    user1.setCreatetime(new Date());
                     homePageService.modifyWeixinUser1(user1);
                     result.setData(userUUID);
                 }
-                ops.set(userUUID,userUUID,15L, TimeUnit.MINUTES);
+                Date date = new Date();
+                String format = new SimpleDateFormat("yyyy-MM-dd").format(date);
+                Date createtime = findUser.getCreatetime();
+                String format1="";
+                if (createtime!=null){
+                     format1= new SimpleDateFormat("yyyy-MM-dd").format(createtime);
+                }
+                if (format!=null&&!format.equals(format1)){
+                    visitCount.incrementAndGet();
+                }
+                ops.set("uuid:"+userUUID,userUUID,15L, TimeUnit.MINUTES);
             }else{//用户没有初始化
                 String wxUserId = UUID.randomUUID().toString().replaceAll("-", "");//用户id
                 log.info("openId不存在,插入数据库");
@@ -191,7 +211,6 @@ public class HomePageController {
                 //String encryptedData = reqMap.get("encryptedData");
                //String iv = reqMap.get("iv");
                 WxUser user = new WxUser();
-
                 //String headimgurl = userMap.get("headimgurl");
                 //String gender = String.valueOf(userMap.get("gender"));
                 //String gender = String.valueOf(userMap.get("gender"));
@@ -208,6 +227,7 @@ public class HomePageController {
                          user.setNickname(nickName);
                          user.setOpenid(openid);
                          user.setSuperiorid(uuid);
+                         user.setCreatetime(new Date());
                          result.setData(wxUserId);
                          homePageService.addWeixinUser(user);
                     }else {//有父id
@@ -216,6 +236,7 @@ public class HomePageController {
                         user.setHeadimgurl(headimgurl);
                         user.setNickname(nickName);
                         user.setOpenid(openid);
+                        user.setCreatetime(new Date());
                         result.setData(wxUserId);
                         homePageService.addWeixinUser1(user);
                     }
@@ -226,14 +247,42 @@ public class HomePageController {
                     user.setHeadimgurl(headimgurl);
                     user.setNickname(nickName);
                     user.setOpenid(openid);
+                    user.setCreatetime(new Date());
                     result.setData(wxUserId);
                     homePageService.addWeixinUser1(user);
                 }
                 //Integer count1 =  wxUserMapper.insertWxUser(newUser);
-                ops.set(wxUserId,wxUserId,15L,TimeUnit.MINUTES);
+                registerCount.incrementAndGet();
+                visitCount.incrementAndGet();
+                ops.set("uuid:"+wxUserId,wxUserId,15L,TimeUnit.MINUTES);
             }
         }
                 return result;
         }
+        @ApiOperation(value = "假登录")
+        @ApiImplicitParam
+        @PostMapping("/login1")
+        public void login1(String uuid){
+            ValueOperations ops = redisTemplate.opsForValue();
+            ops.set("uuid:"+uuid,uuid);
+        }
+        @ApiOperation(value = "今日注册和访问量")
+        @ApiImplicitParam
+        @PostMapping("/todayVisit")
+        public Map<String, Integer> visitVolume()  {
+            try {
+                Map<String,Integer> map=new HashMap<String, Integer>();
+                map.put("registerCount",registerCount.get());
+                map.put("visitCount",visitCount.get());
+                return map;
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+            return null;
+        }
 
+        public void zeroToday() {
+            registerCount.set(0);
+            visitCount.set(0);
+        }
 }

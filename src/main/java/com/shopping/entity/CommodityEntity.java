@@ -49,5 +49,6 @@ public class CommodityEntity {
 
     private Integer beretail;//能够成为分销商吗？
 
+    private Double discount;
 
 }

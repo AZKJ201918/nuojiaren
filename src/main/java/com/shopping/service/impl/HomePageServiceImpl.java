@@ -31,11 +31,14 @@ public class HomePageServiceImpl implements HomePageService{
         if (commodityList!=null){
             for (CommodityEntity commodity:commodityList){
                    CommercialEntity commercial= homePageMapper.selectSubtractByCid(commodity.getId());
-                   System.out.println("subtract"+commercial.getSubtract());
-                  // Double endPrice=commodity.getPrice()-subtract;
-                  // commodity.setEndPrice(endPrice);
-                   commodity.setSubtract(commercial.getSubtract());
-                   commodity.setAid(commercial.getAid());
+                   if (commercial!=null){
+                       System.out.println("subtract"+commercial.getSubtract());
+                       // Double endPrice=commodity.getPrice()-subtract;
+                       // commodity.setEndPrice(endPrice);
+                       commodity.setSubtract(commercial.getSubtract());
+                       commodity.setAid(commercial.getAid());
+                       commodity.setDiscount(commercial.getDiscount());
+                   }
             }
             return commodityList;
         }else {
@@ -54,7 +57,7 @@ public class HomePageServiceImpl implements HomePageService{
     }
 
     @Override
-    public String findUserByOpenid(String openid) {
+    public WxUser findUserByOpenid(String openid) {
         return homePageMapper.selectUserByOpenid(openid);
     }
 
