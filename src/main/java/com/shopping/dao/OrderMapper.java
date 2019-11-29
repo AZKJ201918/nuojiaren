@@ -14,7 +14,7 @@ public interface OrderMapper {
     List<OrderEntity> selectAllOrder(@Param("uuid") String uuid,@Param("start") Integer start,@Param("status") String status);
     @Select("select id,name,url,price from commodity where id in (${cid})")
     List<CommodityEntity> selectCommodity(@Param("cid") String cid);
-    @Select("select orderid,finalprice,addressid,cid,status from orders where id=#{id}")
+    @Select("select orderid,finalprice,addressid,cid,status,courier,company from orders where id=#{id}")
     OrderEntity selectOneOrder(String id);
     @Select("select name,phone,province,city,area,detail from address where id=#{id}")
     AddressEntity selectAddressById(String id);

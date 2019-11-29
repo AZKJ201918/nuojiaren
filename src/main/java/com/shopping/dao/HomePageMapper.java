@@ -14,7 +14,7 @@ public interface HomePageMapper {
     //商品没有下架，并且不是积分商品
     @Select("select id,name,url,price,sales,repertory,subname from commodity where status=1 and isintegral=0 order by createTime DESC limit #{start},8")
     List<CommodityEntity> selectAllCommodity(Integer start);
-    @Select("select subtract,aid,discount from commercial where cid=#{id}")
+    @Select("select subtract,aid,discount,startTime,endTime from commercial where cid=#{id}")
     CommercialEntity selectSubtractByCid(Integer id);
     @Select("select name,imgurl,linkurl,linkid,linktype from options where status=1")
     List<OptionEntity> selectAllOption();

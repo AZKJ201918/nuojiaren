@@ -229,7 +229,10 @@ public class OrderController {
                             return result;
                         }
                         CommercialEntity commercial=detailService.findActiveById(id1);//商品的aid
-                        String aid=commercial.getAid();
+                        String aid="";
+                        if (commercial!=null){
+                            aid=commercial.getAid();
+                        }
                         long startTime = commercial.getStartTime().getTime();
                         long endTime = commercial.getEndTime().getTime();
                         long now = new Date().getTime();
@@ -279,11 +282,20 @@ public class OrderController {
                         OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
                         orderCommodity.setCid(Integer.parseInt(id1));
                         orderCommodity.setNum(number);
-                        orderCommodity.setAid(aid);
+                        if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){
+                            orderCommodity.setAid(aid);
+                        }
                         orderCommodity.setOrderId(order.getOrderid());
                         orderCommodity.setOid(oid);
                         shopCarService.addOrderCommodity(orderCommodity);
                         Integer reper= (Integer) hos.get("repertory:"+id1,"repertory");
+                        if (reper == null) {
+                            reper = shopCarService.findRepertory(id1 + "");
+                            //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                            //reper-=volumn;
+                            Integer volumn=shopCarService.findVolumn(Integer.parseInt(id1));
+                            reper-=volumn;
+                        }
                         reper-=number;
                         hos.put("repertory:"+id1,"repertory",reper);
                         //最终支付
@@ -307,7 +319,7 @@ public class OrderController {
                         String orderId = DateUtil.getOrderIdByTime();
                         for (String id:ids){
                             double totalPrice=0;
-                            Integer num = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);
+                            Integer num = (Integer) hos.get("shopCar:"+uuid,id);
                             Integer repertory = (Integer) hos.get("repertory:"+id, "repertory");
                             if (repertory == null) {
                                 repertory = shopCarService.findRepertory(id + "");
@@ -360,12 +372,15 @@ public class OrderController {
                                     }
                                     //不包邮，把邮费查出来加在总价上
                                 }
+                                price+=danjia*num;
                             }
                             finalPrice+=totalPrice;
                             OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
                             orderCommodity.setCid(Integer.parseInt(id));
                             orderCommodity.setNum(num);
-                            orderCommodity.setAid(aid);
+                            if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){
+                                orderCommodity.setAid(aid);
+                            }
                             orderCommodity.setOrderId(orderId);
                             shopCarService.addOrderCommodity(orderCommodity);
                         }
@@ -388,7 +403,7 @@ public class OrderController {
                         //订单完成立即扣除库存
                         for (String id:ids){
                             Integer reper= (Integer) hos.get("repertory:"+id,"repertory");//库存
-                            Integer num = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);//购物车数量
+                            Integer num = (Integer) hos.get("shopCar:"+uuid,id);//购物车数量
                             if (reper == null) {
                                 reper = shopCarService.findRepertory(id + "");
                                 //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
@@ -398,10 +413,8 @@ public class OrderController {
                             }
                             reper-=num;
                             hos.put("repertory:"+id,"repertory",reper);
-                            hos.delete("shopCar:"+uuid,"shopCar:"+id);//清空购物车信息
+                            hos.delete("shopCar:"+uuid,id);//清空购物车信息
                         }
-
-
                         //最终支付
                         PosPrepay posPrepay=new PosPrepay();
                         String openid = shopCarService.findOpenid(uuid);
@@ -552,13 +565,18 @@ public class OrderController {
         ApiResult<Object> result = new ApiResult<>();
         try {
             ValueOperations ops = redisTemplate.opsForValue();
-            String ruuid = (String) ops.get(uuid);
+            String ruuid = (String) ops.get("uuid:"+uuid);
             if (uuid==null||!uuid.equals(ruuid)){
                 result.setCode(Constants.RESP_STATUS_BADREQUEST);
                 result.setMessage("用户未登录");
                 return result;
             }
             OrderEntity order=orderService.findOrder(orderId,uuid);
+            if (order==null){
+                result.setMessage("不是本人的订单，不能签收");
+                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                return result;
+            }
             Integer status = order.getStatus();
             if (status==null){
                 result.setMessage("不是本人的订单，不能签收");

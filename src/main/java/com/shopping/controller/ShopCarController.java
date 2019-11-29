@@ -106,16 +106,12 @@ public class ShopCarController {
             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
             return result;
         }
-        Boolean flag1 = hos.hasKey("shopCar:"+uuid,"shopCar:"+id);
-        Integer carNum=null;
-        if (flag1){
-            carNum = (Integer) hos.get("shopCar:"+uuid,"shopCar:"+id);
-        }
+        Integer carNum = (Integer) hos.get("shopCar:"+uuid,id);
         if (carNum != null) {
             carNum += num;
-            hos.put("shopCar:"+uuid,"shopCar:"+id, carNum);
+            hos.put("shopCar:"+uuid,id, carNum);
         } else {
-            hos.put("shopCar:"+uuid, "shopCar:"+id, num);
+            hos.put("shopCar:"+uuid, id, num);
         }
         result.setMessage("购物车新增成功");
         result.setData(4);
@@ -162,9 +158,9 @@ public class ShopCarController {
         }
         try {
             HashOperations hos = redisTemplate.opsForHash();
-            Boolean flag = hos.hasKey("shopCar:"+uuid,"shopCar:"+id);
+            Boolean flag = hos.hasKey("shopCar:"+uuid,id);
             if (flag){
-                hos.delete("shopCar:"+uuid,"shopCar:"+id);
+                hos.delete("shopCar:"+uuid,id);
                 result.setMessage("删除购物车成功");
             }else {
                 result.setMessage("删除购物车失败");
@@ -210,7 +206,7 @@ public class ShopCarController {
                 result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
                 return result;
             }
-            hos.put("shopCar:"+uuid,"shopCar:"+id, num);
+            hos.put("shopCar:"+uuid,id, num);
             result.setMessage("购物车数量修改成功");
         } catch (Exception e) {
             e.printStackTrace();
@@ -232,19 +228,21 @@ public class ShopCarController {
             for (Integer id:ids){
                 String aid=shopCarService.findAid(orderId,id);
                 CommercialEntity commercial= detailService.findActiveById(id + "");
-                String aid1=commercial.getAid();
-                long startTime = commercial.getStartTime().getTime();
-                long endTime = commercial.getEndTime().getTime();
-                long now = new Date().getTime();
-                if (aid!=null&&!aid.equals(aid1)){
-                    result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
-                    result.setMessage("活动已过期");
-                    return result;
-                }
-                if (now<startTime||now>endTime){
-                    result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
-                    result.setMessage("活动已过期");
-                    return result;
+                if (commercial!=null){
+                    String aid1=commercial.getAid();
+                    long startTime = commercial.getStartTime().getTime();
+                    long endTime = commercial.getEndTime().getTime();
+                    long now = new Date().getTime();
+                    if (aid!=null&&!aid.equals(aid1)){
+                        result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                        result.setMessage("活动已过期");
+                        return result;
+                    }
+                    if (now<startTime||now>endTime){
+                        result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                        result.setMessage("活动已过期");
+                        return result;
+                    }
                 }
             }
             Double finalPricer=shopCarService.findFinalPrice(orderId);

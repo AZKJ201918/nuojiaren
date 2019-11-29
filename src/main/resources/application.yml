@@ -8,8 +8,9 @@ mybatis:
 spring:
   redis:
     database: 0
-    host: 106.14.195.35
-    password: azkj201918
+    #host: 106.14.195.35
+    host: 192.168.0.217
+    #password: azkj201918
   data:
     mongodb:
       uri: mongodb://106.14.195.35:27017/comment

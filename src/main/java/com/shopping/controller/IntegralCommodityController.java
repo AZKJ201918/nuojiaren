@@ -138,14 +138,14 @@ public class IntegralCommodityController {
                     }
                     throw new SuperMarketException("你的积分不够");
                 }
-                Integer num = integralCommodity.getNum();//限购的次数
+                /*Integer num = integralCommodity.getNum();//限购的次数
                 Integer count = integralCommodityService.findChangeNum(id, uuid);//找已经换购的次数
                 if (count >= num) {
                     if (lock!=null){
                         lock.release();
                     }
                     throw new SuperMarketException("你达到限购的次数，无法兑换");
-                }
+                }*/
                 Double price = integralCommodityService.findPrice(id);//积分商品需要的价格
                 //生成订单，并且扣除积分调用支付接口
                 integralCommodityService.modifyUserIntegral(integral, uuid);
@@ -225,7 +225,7 @@ public class IntegralCommodityController {
     } catch (SuperMarketException e) {
         log.error("用户注册异常",e);
         result.setMessage(e.getMessage());
-        result.setData(Constants.RESP_STATUS_BADREQUEST);
+        result.setCode(Constants.RESP_STATUS_BADREQUEST);
         if (null != lock) {
             try {
                 lock.release();
@@ -237,7 +237,7 @@ public class IntegralCommodityController {
     }catch (Exception e) {
         log.error("用户注册异常",e);
         result.setMessage("后台服务器异常");
-        result.setData(Constants.RESP_STATUS_INTERNAL_ERROR);
+        result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
         if (null != lock) {
             try {
                 lock.release();

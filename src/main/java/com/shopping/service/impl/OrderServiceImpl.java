@@ -48,22 +48,26 @@ public class OrderServiceImpl implements OrderService {
         order.setAddress(address);
         List<CommodityEntity> commodity = orderMapper.selectCommodity(order.getCid());
         List<IntegralCommodity> integralCommodityList=orderMapper.selectCidAndIntegral();
-        for (CommodityEntity commodit:commodity){
-            String orderId = order.getOrderid();
-            //String cid = order.getCid();
-          // List<Integer>ids=orderMapper.selectCid(orderId);
-            Integer cid = commodit.getId();
-            System.out.println(cid);
-            System.out.println(orderId);
-            CommercialEntity commercial = homePageMapper.selectActiveByCid(cid);
-            Integer num=orderMapper.selectNum(cid,orderId);
-            commodit.setCommercial(commercial);
-            commodit.setNum(num);
-            for (IntegralCommodity integralCommodity:integralCommodityList){
-                Integer cid1 = integralCommodity.getCid();
-                Integer integral = integralCommodity.getIntegral();
-                if (cid==cid1){
-                    commodit.setIntegral(integral);
+        if (commodity!=null){
+            for (CommodityEntity commodit:commodity){
+                String orderId = order.getOrderid();
+                //String cid = order.getCid();
+                // List<Integer>ids=orderMapper.selectCid(orderId);
+                Integer cid = commodit.getId();
+                System.out.println(cid);
+                System.out.println(orderId);
+                CommercialEntity commercial = homePageMapper.selectActiveByCid(cid);
+                Integer num=orderMapper.selectNum(cid,orderId);
+                commodit.setCommercial(commercial);
+                commodit.setNum(num);
+                if (integralCommodityList!=null){
+                    for (IntegralCommodity integralCommodity:integralCommodityList){
+                        Integer cid1 = integralCommodity.getCid();
+                        Integer integral = integralCommodity.getIntegral();
+                        if (cid==cid1){
+                            commodit.setIntegral(integral);
+                        }
+                    }
                 }
             }
         }

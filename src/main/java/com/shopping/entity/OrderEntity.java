@@ -31,6 +31,10 @@ public class OrderEntity {
     @JsonFormat(pattern = "yyyy-MM-dd HH:mm:ss",timezone = "GTM+8")
     private Date paytime;
 
+    private String courier;
+
+    private String company;
+
     private AddressEntity address;
 
     private List<CommodityEntity> commodityList;

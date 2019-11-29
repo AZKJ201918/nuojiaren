@@ -24,6 +24,7 @@ import org.springframework.data.mongodb.core.query.Update;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+import java.util.HashMap;
 import java.util.List;
 
 @CrossOrigin
@@ -72,17 +73,24 @@ public class DiscussController {
     @ApiOperation(value = "查看商品评论",notes = "商品评论",httpMethod = "POST")
     @ApiImplicitParam
     @PostMapping("/loadDiscuss")
-    public ApiResult loadDiscuss(Integer id,Integer page){
+    public ApiResult loadDiscuss(Integer id,Integer page,String evaluate){
         ApiResult<Object> result = new ApiResult<>();
         Query query = new Query();
         query.addCriteria(Criteria.where("cid").is(id));
-        query.skip((page-1)*10).limit(10);
+        if (evaluate!=null){
+            query.addCriteria(Criteria.where("evaluate").is(evaluate));
+        }
         List<Discuss> discusses = null;
         try {
+            long count = mongoTemplate.count(query, Discuss.class);
+            query.skip((page-1)*10).limit(10);
             discusses = mongoTemplate.find(query, Discuss.class);
+            HashMap<Object, Object> map = new HashMap<>();
+            map.put("discusses",discusses);
+            map.put("count",count);
             System.out.println(discusses);
             result.setMessage("查看评论成功");
-            result.setData(discusses);
+            result.setData(map);
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");
@@ -132,7 +140,6 @@ public class DiscussController {
                     result.setData(0);
                     result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
                 }
-
             } catch (Exception e) {
                 e.printStackTrace();
                 result.setMessage("后台服务器异常");

@@ -51,6 +51,7 @@ public class ShopCarServiceImpl implements ShopCarService{
         }
         String m="";
         for (String s:set){
+            //String[] split = s.split(":");
             m+=s+",";
         }
         int i = m.lastIndexOf(",");
@@ -113,11 +114,11 @@ public class ShopCarServiceImpl implements ShopCarService{
                 List<IntegralCommodity> integralCommodityList=orderMapper.selectIntegralCommodity();
                 for (OrderCommodityEntity orderCommodit:orderCommodity){//取消订单库存加上去
                     Integer cid = orderCommodit.getCid();//订单中商品的id
-                    Integer repertory = (Integer) hos.get(cid+"", "repertory");
+                    Integer repertory = (Integer) hos.get("repertory:"+cid+"", "repertory");
                     System.out.println("商品取消时的库存"+repertory);
                     repertory+=orderCommodit.getNum();
                     hos.put(cid+"","repertory",repertory);
-                    System.out.println("商品取消后的库存"+hos.get(cid+"","repertory"));
+                    System.out.println("商品取消后的库存"+hos.get("repertory:"+cid+"","repertory"));
                     for (IntegralCommodity integralCommodity:integralCommodityList){
                         Integer cid1 = integralCommodity.getCid();//积分商品的id
                         Integer integral = integralCommodity.getIntegral();//商品需要的积分

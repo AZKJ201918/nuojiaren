@@ -7,6 +7,7 @@ import com.shopping.service.HomePageService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.Date;
 import java.util.List;
 
 @Service
@@ -30,15 +31,20 @@ public class HomePageServiceImpl implements HomePageService{
         List<CommodityEntity>commodityList= homePageMapper.selectAllCommodity(start);
         if (commodityList!=null){
             for (CommodityEntity commodity:commodityList){
-                   CommercialEntity commercial= homePageMapper.selectSubtractByCid(commodity.getId());
-                   if (commercial!=null){
+                CommercialEntity commercial= homePageMapper.selectSubtractByCid(commodity.getId());
+                long startTime = commercial.getStartTime().getTime();
+                long endTime = commercial.getEndTime().getTime();
+                long now = new Date().getTime();
+                if (commercial!=null){
                        System.out.println("subtract"+commercial.getSubtract());
                        // Double endPrice=commodity.getPrice()-subtract;
                        // commodity.setEndPrice(endPrice);
-                       commodity.setSubtract(commercial.getSubtract());
-                       commodity.setAid(commercial.getAid());
-                       commodity.setDiscount(commercial.getDiscount());
-                   }
+                       if (now>=startTime&&now<=endTime){
+                           commodity.setSubtract(commercial.getSubtract());
+                           commodity.setAid(commercial.getAid());
+                           commodity.setDiscount(commercial.getDiscount());
+                       }
+                }
             }
             return commodityList;
         }else {
