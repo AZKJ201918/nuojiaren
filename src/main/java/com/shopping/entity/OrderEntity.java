@@ -38,4 +38,6 @@ public class OrderEntity {
     private AddressEntity address;
 
     private List<CommodityEntity> commodityList;
+    @JsonFormat(pattern = "yyyy/MM/dd HH:mm:ss",timezone = "GTM+8")
+    private Date sendouttime;
 }

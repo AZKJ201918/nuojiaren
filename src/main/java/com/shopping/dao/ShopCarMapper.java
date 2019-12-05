@@ -86,8 +86,16 @@ public interface ShopCarMapper {
     int updateBeRetail(String uid);
     @Insert("insert into volumnwater (num,cid,createtime) values (#{num},#{cid},#{createtime})")
     int insertVolumnWater(OrderCommodityEntity orderCommodity);
-    @Select("select num from volumnwater where #{date1}>createtime>=#{date} and cid=#{id}")
-    List<Integer> selectVolumnWater(Integer id, Date date1, Date date);
-    @Insert("insert into record (visit,register,date) values (#{visit},#{register},#{date})")
-    int insertRecord(@Param("map") Map<String, Integer> map,@Param("date") Date date);
+    @Select("select num from volumnwater where createtime>#{date1}  and createtime<=#{date} and cid=#{id}")
+    List<Integer> selectVolumnWater(@Param("id") Integer id,@Param("date1") Date date1,@Param("date") Date date);
+    @Insert("insert into record (visit,register,createtime) values (#{visit},#{register},#{date})")
+    int insertRecord(@Param("visit")Integer visit,@Param("register") Integer register,@Param("date") Date date);
+    @Select("select orderid,sendouttime from orders")
+    List<OrderEntity> selectOutRecieveOrders();
+    @Update("update orders set status=4 where orderid=#{orderid}")
+    int updateOrderRecieve(String orderid);
+    @Insert("insert into wxuserxg (uuid,cid,num,orderid) values (#{uid},#{cid},#{num},#{orderId})")
+    int insertXgNum(@Param("uid") String uid, @Param("cid") Integer cid, @Param("num") Integer num, @Param("orderId") String orderId);
+    @Delete("delete from wxuserxg where uuid=#{uuid} and orderid=#{orderId} and cid=#{cid}")
+    int deleteWxUserXg(@Param("uuid") String uuid,@Param("orderId") String orderId,@Param("cid") Integer cid);
 }

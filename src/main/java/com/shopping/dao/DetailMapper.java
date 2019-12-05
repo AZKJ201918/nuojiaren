@@ -21,4 +21,12 @@ public interface DetailMapper {
     List<String> selectActiveSortByAid(@Param("aid") String aid);
     @Insert("insert into ordercommodity (orderid,cid,num) values (#{orderId},#{id},#{num})")
     int insertOrderCommodity(@Param("orderId") String orderId,@Param("id") String id,@Param("num") Integer num);
+    @Select("select buy from commodity where id=#{id1}")
+    Integer selectCommodityNum(String id1);
+    @Select("select orderid from orders where uid=#{uuid} and status>0")
+    List<String> selectOrderIdByUUID(String uuid);
+    @Select("select ifnull(sum(num),0) from wxuserxg where cid=#{id1} and uuid=#{uuid}")
+    Integer selectXgNum(@Param("id1") String id1,@Param("uuid") String uuid);
+    @Select("select price from commodity where id=#{id}")
+    Integer selectPrice(Integer id);
 }

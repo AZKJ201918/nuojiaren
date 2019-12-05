@@ -3,7 +3,6 @@ package com.shopping.controller;
 import com.shopping.commons.constans.Constants;
 import com.shopping.commons.exception.SuperMarketException;
 import com.shopping.commons.resp.ApiResult;
-import com.shopping.dao.UserMapper;
 import com.shopping.entity.*;
 import com.shopping.service.DetailService;
 import com.shopping.service.OrderService;
@@ -18,7 +17,6 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.curator.framework.recipes.locks.InterProcessMutex;
-import org.apache.ibatis.annotations.Param;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -27,16 +25,11 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.interceptor.TransactionAspectSupport;
 import org.springframework.web.bind.annotation.*;
 
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.util.Date;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.locks.Lock;
-
-import static org.bouncycastle.asn1.x500.style.RFC4519Style.o;
 
 @CrossOrigin
 @RestController
@@ -228,89 +221,155 @@ public class OrderController {
                             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
                             return result;
                         }
-                        CommercialEntity commercial=detailService.findActiveById(id1);//商品的aid
-                        String aid="";
-                        if (commercial!=null){
-                            aid=commercial.getAid();
-                        }
-                        long startTime = commercial.getStartTime().getTime();
-                        long endTime = commercial.getEndTime().getTime();
-                        long now = new Date().getTime();
-                        System.out.println(aid);
-                        double totalPrice=0;
-                        double price=0;
-                        Double danjia = orderService.findPrice(id1);
-                        if (aid==null||aid.equals("")||now<startTime||now>endTime){
-                            totalPrice=danjia*number;
-                            price=danjia*number;
-                        }
-                        if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime) {
-                            List<String> actives = detailService.findActiveSortByAid(aid);
-                            price = danjia * number;
-                            if (actives.contains("postage")) {
-                                for (String active : actives) {
-                                    if (priceServiceMap.get(active.trim()) != null) {
-                                        totalPrice = priceServiceMap.get(active.trim()).countPrice(id1, number, totalPrice);
-                                    }
+                        Integer num=detailService.findCommodityNum(id1);//商品的限购次数
+                        if (num!=null){
+                            Integer onum=detailService.findXgNum(id1,uuid);//用户的购买次数
+                            if (onum+number>=num){
+                                if (lock!=null){
+                                    lock.release();
                                 }
-                            } else {
-                                for (String active : actives) {
-                                    System.out.println(active);
-                                    System.out.println(priceServiceMap.get(active));
-                                    if (priceServiceMap.get(active.trim()) != null) {
-                                        totalPrice = priceServiceMap.get(active.trim()).countPrice(id1, number, totalPrice);
-                                        System.out.println(totalPrice);
-                                    }
-                                }
-                                //不包邮，把邮费查出来加在总价上
+                                result.setMessage("达到商品限购次数,暂不能购买");
+                                result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                                return result;
                             }
                         }
-                        OrderEntity order = new OrderEntity();
-                        order.setUid(uuid);
-                        order.setAddressid(addressid);
-                        order.setFinalprice(totalPrice);
-                        order.setOrderid(DateUtil.getOrderIdByTime());//生成订单号
-                        order.setStatus(1);
-                        order.setCreatetime(new Date());
-                        System.out.println(new Date());
-                        order.setCid(id1);
-                        order.setPrice(price);
-                        order.setClosetime(DateUtil.plusDay2(1));
-                        orderService.addOrder(order);
-                        //把商品订单的数量信息，直接入库
-                        Integer oid=orderService.findIdOrder(order.getOrderid());
-                        OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
-                        orderCommodity.setCid(Integer.parseInt(id1));
-                        orderCommodity.setNum(number);
-                        if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){
-                            orderCommodity.setAid(aid);
+                        CommercialEntity commercial=detailService.findActiveById(id1);//商品的aid
+                        String aid="";
+                        double totalPrice = 0;
+                        double price = 0;
+                        Double danjia = orderService.findPrice(id1);
+                        if (commercial!=null) {
+                            aid = commercial.getAid();
+                            long startTime = commercial.getStartTime().getTime();
+                            long endTime = commercial.getEndTime().getTime();
+                            long now = new Date().getTime();
+                            System.out.println(aid);
+                            if (aid == null || aid.equals("") || now < startTime || now > endTime) {
+                                totalPrice = danjia * number;
+                                price = danjia * number;
+                            }
+                            if (aid != null && !aid.equals("") && now >= startTime && now <= endTime) {
+                                List<String> actives = detailService.findActiveSortByAid(aid);
+                                price = danjia * number;
+                                if (actives.contains("postage")) {
+                                    for (String active : actives) {
+                                        if (priceServiceMap.get(active.trim()) != null) {
+                                            totalPrice = priceServiceMap.get(active.trim()).countPrice(id1, number, totalPrice);
+                                        }
+                                    }
+                                } else {
+                                    for (String active : actives) {
+                                        System.out.println(active);
+                                        System.out.println(priceServiceMap.get(active));
+                                        if (priceServiceMap.get(active.trim()) != null) {
+                                            totalPrice = priceServiceMap.get(active.trim()).countPrice(id1, number, totalPrice);
+                                            System.out.println(totalPrice);
+                                        }
+                                    }
+                                    //不包邮，把邮费查出来加在总价上
+                                }
+                            }
+                            OrderEntity order = new OrderEntity();
+                            order.setUid(uuid);
+                            order.setAddressid(addressid);
+                            order.setFinalprice(totalPrice);
+                            order.setOrderid(DateUtil.getOrderIdByTime());//生成订单号
+                            order.setStatus(1);
+                            order.setCreatetime(new Date());
+                            System.out.println(new Date());
+                            order.setCid(id1);
+                            order.setPrice(price);
+                            order.setClosetime(DateUtil.plusDay2(1));
+                            orderService.addOrder(order);
+                            //把商品订单的数量信息，直接入库
+                            Integer oid = orderService.findIdOrder(order.getOrderid());
+                            OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
+                            orderCommodity.setCid(Integer.parseInt(id1));
+                            orderCommodity.setNum(number);
+                            if (aid != null && !aid.equals("") && now >= startTime && now <= endTime) {
+                                orderCommodity.setAid(aid);
+                            }
+                            orderCommodity.setOrderId(order.getOrderid());
+                            orderCommodity.setOid(oid);
+                            shopCarService.addOrderCommodity(orderCommodity);
+                            Integer reper = (Integer) hos.get("repertory:" + id1, "repertory");
+                            if (reper == null) {
+                                reper = shopCarService.findRepertory(id1 + "");
+                                //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                                //reper-=volumn;
+                                if (reper == null) {
+                                    reper = 0;
+                                }
+                                Integer volumn = shopCarService.findVolumn(Integer.parseInt(id1));
+                                reper -= volumn;
+                            }
+                            shopCarService.addXgNum(uuid, Integer.parseInt(id1), number, order.getOrderid());
+                            reper -= number;
+                            hos.put("repertory:" + id1, "repertory", reper);
+                            //最终支付
+                            PosPrepay posPrepay = new PosPrepay();
+                            String openid = shopCarService.findOpenid(uuid);
+                            int v = (int) (totalPrice * 100);
+                            posPrepay.setTotal_fee(v);
+                            posPrepay.setTerminal_trace(order.getOrderid());
+                            posPrepay.setOperator_id(openid);
+                            posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+                            Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
+                            map.put("id", order.getId());
+                            ops.set("orderId:" + order.getOrderid(), map.get("out_trade_no"), 3L, TimeUnit.MINUTES);
+                            result.setData(map);
+                            result.setMessage("支付成功");
+                        }else {
+                            totalPrice = danjia * number;
+                            price = danjia * number;
+                            OrderEntity order = new OrderEntity();
+                            order.setUid(uuid);
+                            order.setAddressid(addressid);
+                            order.setFinalprice(totalPrice);
+                            order.setOrderid(DateUtil.getOrderIdByTime());//生成订单号
+                            order.setStatus(1);
+                            order.setCreatetime(new Date());
+                            System.out.println(new Date());
+                            order.setCid(id1);
+                            order.setPrice(price);
+                            order.setClosetime(DateUtil.plusDay2(1));
+                            orderService.addOrder(order);
+                            //把商品订单的数量信息，直接入库
+                            Integer oid = orderService.findIdOrder(order.getOrderid());
+                            OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
+                            orderCommodity.setCid(Integer.parseInt(id1));
+                            orderCommodity.setNum(number);
+                            orderCommodity.setOrderId(order.getOrderid());
+                            orderCommodity.setOid(oid);
+                            shopCarService.addOrderCommodity(orderCommodity);
+                            Integer reper = (Integer) hos.get("repertory:" + id1, "repertory");
+                            if (reper == null) {
+                                reper = shopCarService.findRepertory(id1 + "");
+                                //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                                //reper-=volumn;
+                                if (reper == null) {
+                                    reper = 0;
+                                }
+                                Integer volumn = shopCarService.findVolumn(Integer.parseInt(id1));
+                                reper -= volumn;
+                            }
+                            shopCarService.addXgNum(uuid, Integer.parseInt(id1), number, order.getOrderid());
+                            reper -= number;
+                            hos.put("repertory:" + id1, "repertory", reper);
+                            //最终支付
+                            PosPrepay posPrepay = new PosPrepay();
+                            String openid = shopCarService.findOpenid(uuid);
+                            int v = (int) (totalPrice * 100);
+                            posPrepay.setTotal_fee(v);
+                            posPrepay.setTerminal_trace(order.getOrderid());
+                            posPrepay.setOperator_id(openid);
+                            posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
+                            Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
+                            map.put("id", order.getId());
+                            ops.set("orderId:" + order.getOrderid(), map.get("out_trade_no"), 3L, TimeUnit.MINUTES);
+                            result.setData(map);
+                            result.setMessage("支付成功");
                         }
-                        orderCommodity.setOrderId(order.getOrderid());
-                        orderCommodity.setOid(oid);
-                        shopCarService.addOrderCommodity(orderCommodity);
-                        Integer reper= (Integer) hos.get("repertory:"+id1,"repertory");
-                        if (reper == null) {
-                            reper = shopCarService.findRepertory(id1 + "");
-                            //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
-                            //reper-=volumn;
-                            Integer volumn=shopCarService.findVolumn(Integer.parseInt(id1));
-                            reper-=volumn;
-                        }
-                        reper-=number;
-                        hos.put("repertory:"+id1,"repertory",reper);
-                        //最终支付
-                        PosPrepay posPrepay=new PosPrepay();
-                        String openid = shopCarService.findOpenid(uuid);
-                        int v = (int) (totalPrice * 100);
-                        posPrepay.setTotal_fee(v);
-                        posPrepay.setTerminal_trace(order.getOrderid());
-                        posPrepay.setOperator_id(openid);
-                        posPrepay.setTerminal_time(new SimpleDateFormat("yyyyMMddHHmmss").format(new Date()));
-                        Map map = (Map) PrePayDemo.posPrePayRe(posPrepay);
-                        map.put("id",order.getId());
-                        ops.set("orderId:"+order.getOrderid(),map.get("out_trade_no"),3L,TimeUnit.MINUTES);
-                        result.setData(map);
-                        result.setMessage("支付成功");
                     }
                     if (ids!=null){
                         double finalPrice=0;
@@ -319,6 +378,7 @@ public class OrderController {
                         String orderId = DateUtil.getOrderIdByTime();
                         for (String id:ids){
                             double totalPrice=0;
+                            idString+=id+",";
                             Integer num = (Integer) hos.get("shopCar:"+uuid,id);
                             Integer repertory = (Integer) hos.get("repertory:"+id, "repertory");
                             if (repertory == null) {
@@ -340,49 +400,68 @@ public class OrderController {
                                 }
                                 return result;
                             }
+                            Integer num1=detailService.findCommodityNum(id);//商品的限购次数
+                            if (num1!=null){
+                                Integer onum=detailService.findXgNum(id,uuid);//用户的购买次数
+                                if (onum+num>=num1){//本次的购买次数大于限购次数
+                                    throw new SuperMarketException(id);
+                                }
+                            }
                             CommercialEntity commercial= detailService.findActiveById(id);
                             //detailService.addOrderCommodity(orderId,id,num);
-                            idString+=id+",";
-                            String aid=commercial.getAid();
-                            long startTime = commercial.getStartTime().getTime();
-                            long endTime = commercial.getEndTime().getTime();
-                            long now = new Date().getTime();
-                            System.out.println(aid);
                             Double danjia=orderService.findPrice(id);
-                            if (aid==null||aid.equals("")||now<startTime||now>endTime){
-                                   totalPrice=danjia*num;
-                                   price+=danjia*num;
-                            }
-                            if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){//有活动并且没有过期
-                                List<String> actives=detailService.findActiveSortByAid(aid);
-                                if (actives.contains("postage")){
-                                    for (String active:actives){
-                                        if (priceServiceMap.get(active.trim())!=null) {
-                                            totalPrice = priceServiceMap.get(active.trim()).countPrice(id, num, totalPrice);
-                                        }
-                                    }
-                                }else {
-                                    for (String active:actives){
-                                        System.out.println(active);
-                                        System.out.println(priceServiceMap.get(active));
-                                        if (priceServiceMap.get(active.trim())!=null) {
-                                            totalPrice = priceServiceMap.get(active.trim()).countPrice(id, num, totalPrice);
-                                            System.out.println(totalPrice);
-                                        }
-                                    }
-                                    //不包邮，把邮费查出来加在总价上
+                            if (commercial!=null){
+                                String aid=commercial.getAid();
+                                long startTime = commercial.getStartTime().getTime();
+                                long endTime = commercial.getEndTime().getTime();
+                                long now = new Date().getTime();
+                                System.out.println(aid);
+                                if (aid==null||aid.equals("")||now<startTime||now>endTime){
+                                    totalPrice=danjia*num;
+                                    price+=danjia*num;
                                 }
+                                if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){//有活动并且没有过期
+                                    List<String> actives=detailService.findActiveSortByAid(aid);
+                                    if (actives.contains("postage")){
+                                        for (String active:actives){
+                                            if (priceServiceMap.get(active.trim())!=null) {
+                                                totalPrice = priceServiceMap.get(active.trim()).countPrice(id, num, totalPrice);
+                                            }
+                                        }
+                                    }else {
+                                        for (String active:actives){
+                                            System.out.println(active);
+                                            System.out.println(priceServiceMap.get(active));
+                                            if (priceServiceMap.get(active.trim())!=null) {
+                                                totalPrice = priceServiceMap.get(active.trim()).countPrice(id, num, totalPrice);
+                                                System.out.println(totalPrice);
+                                            }
+                                        }
+                                        //不包邮，把邮费查出来加在总价上
+                                    }
+                                    price+=danjia*num;
+                                }
+                                finalPrice+=totalPrice;
+                                OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
+                                orderCommodity.setCid(Integer.parseInt(id));
+                                orderCommodity.setNum(num);
+                                if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){
+                                    orderCommodity.setAid(aid);
+                                }
+                                orderCommodity.setOrderId(orderId);
+                                shopCarService.addOrderCommodity(orderCommodity);
+                                shopCarService.addXgNum(uuid,Integer.parseInt(id),num,orderId);
+                            }else {
+                                totalPrice=danjia*num;
                                 price+=danjia*num;
+                                finalPrice+=totalPrice;
+                                OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
+                                orderCommodity.setCid(Integer.parseInt(id));
+                                orderCommodity.setNum(num);
+                                orderCommodity.setOrderId(orderId);
+                                shopCarService.addOrderCommodity(orderCommodity);
+                                shopCarService.addXgNum(uuid,Integer.parseInt(id),num, orderId);
                             }
-                            finalPrice+=totalPrice;
-                            OrderCommodityEntity orderCommodity = new OrderCommodityEntity();
-                            orderCommodity.setCid(Integer.parseInt(id));
-                            orderCommodity.setNum(num);
-                            if (aid!=null&&!aid.equals("")&&now>=startTime&&now<=endTime){
-                                orderCommodity.setAid(aid);
-                            }
-                            orderCommodity.setOrderId(orderId);
-                            shopCarService.addOrderCommodity(orderCommodity);
                         }
                         int i = idString.lastIndexOf(",");
                         String idsub = idString.substring(0, i);
@@ -438,7 +517,19 @@ public class OrderController {
             if (null != lock) {
                 lock.release();
             }
-        } catch (Exception e) {
+        } catch (SuperMarketException e) {
+            log.error("用户注册异常",e);
+            result.setMessage(e.getMessage());
+            result.setCode(Constants.RESP_STATUS_BADREQUEST2);
+            if (null != lock) {
+                try {
+                    lock.release();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
+            TransactionAspectSupport.currentTransactionStatus().setRollbackOnly();
+        }catch (Exception e) {
             log.error("用户注册异常",e);
             result.setMessage("后台服务器异常");
             result.setData(Constants.RESP_STATUS_INTERNAL_ERROR);
@@ -498,7 +589,7 @@ public class OrderController {
                 result.setMessage("用户未登录");
                 return result;
             }
-            boolean flag=orderService.findOrderExsits(id,orderId,uuid);
+            boolean flag=orderService.findOrderExsits(orderId,uuid);
             if (flag==true){
                 orderService.removeOrder(id);
                 orderService.removeOrderCommodity(orderId);
@@ -518,43 +609,64 @@ public class OrderController {
     @ApiImplicitParam
     @PostMapping("/modifyOrder")
     public ApiResult modifyOrder(String id,String orderId,String uuid){
+        InterProcessMutex lock=null;
         ApiResult result=new ApiResult();
-        HashOperations hos = redisTemplate.opsForHash();
-        ValueOperations ops = redisTemplate.opsForValue();
         try {
-            String ruuid = (String) ops.get("uuid:"+uuid);
-            if (uuid==null||!uuid.equals(ruuid)){
-                result.setCode(Constants.RESP_STATUS_BADREQUEST);
-                result.setMessage("用户未登录");
-                return result;
-            }
-            boolean flag=orderService.findOrderExsits(id,orderId,uuid);
-            if (flag==true){
-                orderService.modifyOrder(id);
-                //String orderId=orderService.selectOrderIdById(id);
-                List<OrderCommodityEntity> orderCommodity=orderService.findCidAndNum(orderId);
-                for (OrderCommodityEntity orderCommodit:orderCommodity){//取消订单库存加上去
-                    Integer repertory = (Integer) hos.get("repertory:"+orderCommodit.getCid()+"", "repertory");
-                    if (repertory == null) {
-                        repertory = shopCarService.findRepertory(id + "");
-                        //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
-                        //repertory-=volumn;
-                        Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
-                        repertory-=volumn;
+            lock = new InterProcessMutex(zkClient.getZkClient(), Constants.USER_REGISTER_DISTRIBUTE_LOCK_PATH3);
+            boolean retry = true;
+            do{
+                if (lock.acquire(3000, TimeUnit.MILLISECONDS)) {
+                    HashOperations hos = redisTemplate.opsForHash();
+                    ValueOperations ops = redisTemplate.opsForValue();
+                    String ruuid = (String) ops.get("uuid:" + uuid);
+                    if (uuid == null || !uuid.equals(ruuid)) {
+                        result.setCode(Constants.RESP_STATUS_BADREQUEST);
+                        result.setMessage("用户未登录");
+                        if (lock!=null){
+                            lock.release();
+                        }
+                        return result;
                     }
-                    repertory+=orderCommodit.getNum();
-                    hos.put("repertory:"+orderCommodit.getCid()+"","repertory",repertory);
+                    boolean flag = orderService.findOrderExsits(orderId, uuid);
+                    if (flag == true) {
+                        orderService.modifyOrder(id);
+                        //String orderId=orderService.selectOrderIdById(id);
+                        List<OrderCommodityEntity> orderCommodity = orderService.findCidAndNum(orderId);
+                        for (OrderCommodityEntity orderCommodit : orderCommodity) {//取消订单库存加上去
+                            Integer repertory = (Integer) hos.get("repertory:" + orderCommodit.getCid() + "", "repertory");
+                            if (repertory == null) {
+                                repertory = shopCarService.findRepertory(orderCommodit.getCid() + "");
+                                //Integer volumn=shopCarService.findVolumn(Integer.parseInt(id));
+                                //repertory-=volumn;
+                                Integer volumn = shopCarService.findVolumn(Integer.parseInt(id));
+                                repertory -= volumn;
+                            }
+                            shopCarService.removeWxUserXg(uuid,orderId,orderCommodit.getCid());
+                            repertory += orderCommodit.getNum();
+                            hos.put("repertory:" + orderCommodit.getCid() + "", "repertory", repertory);
+                        }
+                        result.setMessage("取消订单成功");
+                    } else {
+                        result.setMessage("订单不是本人的，不可以取消");
+                        result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+                    }
                 }
-                result.setMessage("取消订单成功");
-            }else {
-                result.setMessage("订单不是本人的，不可以取消");
-                result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
-            }
-
+                retry = false;
+            }while (retry);
+        if (null != lock) {
+            lock.release();
+        }
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");
             result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+            if (null != lock) {
+                try {
+                    lock.release();
+                } catch (Exception e1) {
+                    e1.printStackTrace();
+                }
+            }
         }
         return result;
     }

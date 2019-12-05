@@ -32,10 +32,10 @@ public class HomePageServiceImpl implements HomePageService{
         if (commodityList!=null){
             for (CommodityEntity commodity:commodityList){
                 CommercialEntity commercial= homePageMapper.selectSubtractByCid(commodity.getId());
-                long startTime = commercial.getStartTime().getTime();
-                long endTime = commercial.getEndTime().getTime();
-                long now = new Date().getTime();
                 if (commercial!=null){
+                      long startTime = commercial.getStartTime().getTime();
+                      long endTime = commercial.getEndTime().getTime();
+                      long now = new Date().getTime();
                        System.out.println("subtract"+commercial.getSubtract());
                        // Double endPrice=commodity.getPrice()-subtract;
                        // commodity.setEndPrice(endPrice);

@@ -10,6 +10,7 @@ public class Constants {
     public static final int RESP_STATUS_INTERNAL_ERROR = 500;
 
     public static final int RESP_STATUS_BADREQUEST = 400;
+    public static final int RESP_STATUS_BADREQUEST2 = 499;
 
     public static final int RESP_STATUS_BADREQUEST1 = 407;
 
@@ -41,7 +42,7 @@ public class Constants {
 
     public static final String QINIU_HEAD_IMG_BUCKET_NAME="whazkj";
 
-    public static final String QINIU_HEAD_IMG_BUCKET_URL="http://q0jf94eoj.bkt.clouddn.com";
+    public static final String QINIU_HEAD_IMG_BUCKET_URL="http://njl.azwst.co/";
 
     /***七牛keys end****/
 
@@ -70,6 +71,8 @@ public class Constants {
     public static final String USER_REGISTER_DISTRIBUTE_LOCK_PATH1 = "/user_reg1";
 
     public static final String USER_REGISTER_DISTRIBUTE_LOCK_PATH2 = "/user_reg2";
+
+    public static final String USER_REGISTER_DISTRIBUTE_LOCK_PATH3 = "/user_reg3";
 
     public static final String CACHE_PRODUCT_CATEGORY = "product:category";
     public static final String CACHE_PRODUCT_DETAIL = "product:detail";

@@ -42,7 +42,7 @@ public interface OrderMapper {
     int updateStatus(Integer id);
     @Select("select integral,cid from integralcommodity")
     List<IntegralCommodity> selectIntegralCommodity();
-    @Update("update wxuser set integral+=#{integral} where uuid=#{uuid}")
+    @Update("update wxuser set integral=integral+#{integral} where uuid=#{uuid}")
     int updateIntegral(@Param("uuid") String uuid,@Param("integral") Integer integral);
     @Select("select integral,cid from integralcommodity")
     List<IntegralCommodity> selectCidAndIntegral();
@@ -50,8 +50,8 @@ public interface OrderMapper {
     int deleteOrderCommodity(String orderId);
     @Update("update commodity set status=0 where id=#{id}")
     int updateCommodityStatus(String id);
-    @Select("select count(*) from orders where id=#{id} and orderid=#{orderId} and uid=#{uuid}")
-    int selectOrderExsits(@Param("id") String id, @Param("orderId") String orderId, @Param("uuid") String uuid);
+    @Select("select count(*) from orders where orderid=#{orderId} and uid=#{uuid}")
+    int selectOrderExsits(@Param("orderId") String orderId, @Param("uuid") String uuid);
     @Select("select province,city from address where uid=#{uuid} and id=#{addressid}")
     AddressEntity selectAddressIdExists(@Param("uuid") String uuid,@Param("addressid") Integer addressid);
     @Select("select status from orders where orderid=#{orderId} and uid=#{uuid}")

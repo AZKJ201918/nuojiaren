@@ -50,7 +50,7 @@ public class DiscussController {
         Integer status=orderService.findStatus(id);
         if (status==5){
             result.setMessage("订单已完成评价");
-            result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+            result.setCode(Constants.RESP_STATUS_BADREQUEST);
             return result;
         }
         WxUser wxUser=homePageService.findwxnameAndHeadimgurl(uuid);
@@ -138,7 +138,7 @@ public class DiscussController {
                 }else {
                     result.setMessage("追加失败");
                     result.setData(0);
-                    result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+                    result.setCode(Constants.RESP_STATUS_BADREQUEST);
                 }
             } catch (Exception e) {
                 e.printStackTrace();

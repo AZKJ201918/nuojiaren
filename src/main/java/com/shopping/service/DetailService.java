@@ -15,4 +15,8 @@ public interface DetailService {
     List<String> findActiveSortByAid(String aid);
 
     int addOrderCommodity(String orderId, String id, Integer num);
+
+    Integer findCommodityNum(String id1);
+
+    Integer findXgNum(String id1, String uuid);
 }

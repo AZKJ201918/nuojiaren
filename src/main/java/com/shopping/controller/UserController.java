@@ -4,6 +4,7 @@ import com.shopping.commons.constans.Constants;
 import com.shopping.commons.exception.SuperMarketException;
 import com.shopping.commons.resp.ApiResult;
 import com.shopping.entity.AddressEntity;
+import com.shopping.entity.Cash;
 import com.shopping.service.UserService;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
@@ -121,6 +122,36 @@ public class UserController {
             userService.changeMrAddress(uid);//将用户的已存默认地址修改为非默认
             userService.changeAddressStatus(id);//将用户的现地址修改为默认
             result.setMessage("修改默认地址成功");
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.setMessage("服务器异常");
+            result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+        }
+        return result;
+    }
+    @ApiOperation(value = "申请提现",notes = "申请提现",httpMethod = "POST")
+    @ApiImplicitParam
+    @PostMapping("/cash")
+    public ApiResult cash(Integer money,String uuid){
+        ApiResult result=new ApiResult();
+        try {
+           userService.modifyCash(money,uuid);
+        } catch (Exception e) {
+            e.printStackTrace();
+            result.setMessage("服务器异常");
+            result.setCode(Constants.RESP_STATUS_INTERNAL_ERROR);
+        }
+        return result;
+    }
+    @ApiOperation(value = "查看申请记录",notes = "查看申请记录",httpMethod = "POST")
+    @ApiImplicitParam
+    @PostMapping("/record")
+    public ApiResult record(String uuid){
+        ApiResult result=new ApiResult();
+        try {
+            List<Cash> cashList =userService.findCash(uuid);
+            result.setMessage("查看申请记录成功");
+            result.setData(cashList);
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");

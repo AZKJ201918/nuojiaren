@@ -51,4 +51,6 @@ public class CommodityEntity {
 
     private Double discount;
 
+    private Double postage;
+
 }

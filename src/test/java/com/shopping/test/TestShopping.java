@@ -1,7 +1,8 @@
+/*
 package com.shopping.test;
 
 import com.shopping.commons.resp.ApiResult;
-import com.shopping.controller.IntegralCommodityController;
+//import com.shopping.controller.IntegralCommodityController;
 import com.shopping.controller.OrderController;
 import org.junit.Test;
 import org.junit.runner.RunWith;
@@ -18,7 +19,7 @@ public class TestShopping {
     @Autowired
     private OrderController orderController;
     @Autowired
-    private IntegralCommodityController integralCommodityController;
+   // private IntegralCommodityController integralCommodityController;
     @Test
     public void test1(){
         Map<String, Object> map = new HashMap<>();
@@ -26,13 +27,12 @@ public class TestShopping {
         map.put("id1","1");
         map.put("addressid",5);
         map.put("number",1);
-        ApiResult result = orderController.manyCreateOrder(map);
-        Map data = (Map) result.getData();
-        System.out.println("id"+data.get("id"));
+        //ApiResult result = orderController.manyCreateOrder(map);
+        //Map data = (Map) result.getData();
+        //System.out.println("id"+data.get("id"));
     }
     @Test
-    public void test2(){
-        integralCommodityController.changeCommodity(4,"600c80672f2a4ce7b7b3c27f9210a608",5);
+    public void test2(){ //integralCommodityController.changeCommodity(4,"600c80672f2a4ce7b7b3c27f9210a608",5);
     }
     @Test
     public void test03(){
@@ -42,3 +42,4 @@ public class TestShopping {
         }
     }
 }
+*/

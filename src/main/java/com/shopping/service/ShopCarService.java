@@ -62,4 +62,10 @@ public interface ShopCarService {
     void addVolumnWater(OrderCommodityEntity orderCommodity);
 
     void addRecord(Map<String, Integer> map);
+
+    void signRecieveOrders();
+
+    void addXgNum(String uid, Integer cid, Integer num, String orderId);
+
+    void removeWxUserXg(String uuid, String orderId, Integer cid);
 }

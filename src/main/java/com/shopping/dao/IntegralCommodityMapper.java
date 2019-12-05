@@ -12,7 +12,7 @@ import java.util.List;
 public interface IntegralCommodityMapper {
     @Select("select id,name,url,price,sales,repertory,subname from commodity where status=1 and isintegral=1")
     List<CommodityEntity> selectIntegralCommodity();
-    @Select("select name,url,price,sales,repertory,subname,detailurl,specsurl,saleurl from commodity where status=1 and id=#{id}")
+    @Select("select name,url,price,sales,repertory,subname,detailurl,specsurl,saleurl,postage from commodity where status=1 and id=#{id}")
     CommodityEntity selectIntegralCommodityDetail(Integer id);
     @Select("select integral,num from integralcommodity where cid=#{id}")
     IntegralCommodity selectNeedIntegral(Integer id);

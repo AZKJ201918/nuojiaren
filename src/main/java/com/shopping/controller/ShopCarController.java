@@ -13,7 +13,6 @@ import com.shopping.service.DetailService;
 import com.shopping.service.OrderService;
 import com.shopping.service.ShopCarService;
 import com.shopping.util.PosPrepay;
-import com.shopping.util.PosPrepayRe;
 import com.shopping.util.PrePayDemo;
 
 import com.shopping.util.XmlUtil;
@@ -22,19 +21,15 @@ import io.swagger.annotations.ApiImplicitParam;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.data.mongodb.core.mapping.Document;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.data.redis.core.ValueOperations;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.CrossOrigin;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
-import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
 import java.util.*;
 import java.util.concurrent.TimeUnit;
@@ -158,14 +153,8 @@ public class ShopCarController {
         }
         try {
             HashOperations hos = redisTemplate.opsForHash();
-            Boolean flag = hos.hasKey("shopCar:"+uuid,id);
-            if (flag){
-                hos.delete("shopCar:"+uuid,id);
-                result.setMessage("删除购物车成功");
-            }else {
-                result.setMessage("删除购物车失败");
-                result.setCode(Constants.RESP_STATUS_BADREQUEST);
-            }
+            hos.delete("shopCar:"+uuid,id);
+            result.setMessage("删除购物车成功");
         } catch (Exception e) {
             e.printStackTrace();
             result.setMessage("服务器异常");
@@ -305,38 +294,47 @@ public class ShopCarController {
                 shopCarService.modifyOrderStatus(orderId);//修改订单状态为代发货,已付款，并且记录订单成交时间
                // shopCarService.modifyNum(orderId);
                 List<OrderCommodityEntity> orderCommodityList=shopCarService.findCidAndNum(orderId);
-                for (OrderCommodityEntity orderCommodity:orderCommodityList){//把订单的商品的数量记录在流水里
+                if (orderCommodityList!=null){
+                    for (OrderCommodityEntity orderCommodity:orderCommodityList){//把订单的商品的数量记录在流水里
                     /*Integer id=shopCarService.findVolumnId(orderCommodity.getCid());
                     if(id!=null){
                         shopCarService.modifyVolumn(orderCommodity);
                     }else {
                         shopCarService.addVolumn(orderCommodity);
                     }*/
-                    shopCarService.addVolumnWater(orderCommodity);
-                }
-                CommodityEntity commodity=null;
-                boolean flag=false;
-                boolean flag1=false;
-                for (OrderCommodityEntity orderCommodity:orderCommodityList){
-                    commodity=shopCarService.findIsintegralAndBeretail(orderCommodity.getCid());
-                    if (commodity.getIsintegral()==0){//非积分商品
-                        flag=true;
+                        shopCarService.addVolumnWater(orderCommodity);
                     }
-                    if (commodity.getBeretail()==1){
-                        flag1=true;
+                    CommodityEntity commodity=null;
+                    boolean flag=false;
+                    boolean flag1=false;
+                    String uid=shopCarService.findUid(orderId);
+                    for (OrderCommodityEntity orderCommodity:orderCommodityList){
+                        commodity=shopCarService.findIsintegralAndBeretail(orderCommodity.getCid());
+                        if (commodity!=null){
+                            if (commodity.getIsintegral()==0){//非积分商品
+                                flag=true;
+                            }
+                            if (commodity.getBeretail()==1){
+                                flag1=true;
+                            }
+                        }
+                        /*if (orderCommodity!=null){
+                            shopCarService.addXgNum(uid,orderCommodity.getCid(),orderCommodity.getNum());
+                        }*/
                     }
+                    if (flag){//不是积分商品
+                        OrderEntity order = shopCarService.findPrice(orderId);//把用户消费的积分加进去
+                        //分销加钱
+                        shopCarService.retailMoney(orderId);
+                    }
+                    if (flag1){//能够成为分销商
+                        if (uid!=null){
+                            shopCarService.modifyBeRetail(uid);
+                        }
+                    }
+                    map.put("return_code","01");
+                    map.put("return_msg","回调成功");
                 }
-                if (flag){//不是积分商品
-                    OrderEntity order = shopCarService.findPrice(orderId);//把用户消费的积分加进去
-                    //分销加钱
-                    shopCarService.retailMoney(orderId);
-                }
-                if (flag1){//能够成为分销商
-                     String uid=shopCarService.findUid(orderId);
-                     shopCarService.modifyBeRetail(uid);
-                }
-                map.put("return_code","01");
-                map.put("return_msg","回调成功");
             }
            /* System.out.println("进入到printWriter");
             response.reset();
@@ -355,6 +353,53 @@ public class ShopCarController {
             map.put("return_msg","回调失败");
         }
         return map;
+    }
+    @ApiOperation(value = "异步回调测试", notes = "异步回调", httpMethod = "POST")
+    @ApiImplicitParam
+    @PostMapping("/annocy1")
+    public void test(String orderId) {
+        shopCarService.modifyOrderStatus(orderId);//修改订单状态为代发货,已付款，并且记录订单成交时间
+        // shopCarService.modifyNum(orderId);
+        List<OrderCommodityEntity> orderCommodityList = shopCarService.findCidAndNum(orderId);
+        if (orderCommodityList != null) {
+            for (OrderCommodityEntity orderCommodity : orderCommodityList) {//把订单的商品的数量记录在流水里
+                    /*Integer id=shopCarService.findVolumnId(orderCommodity.getCid());
+                    if(id!=null){
+                        shopCarService.modifyVolumn(orderCommodity);
+                    }else {
+                        shopCarService.addVolumn(orderCommodity);
+                    }*/
+                shopCarService.addVolumnWater(orderCommodity);
+            }
+            CommodityEntity commodity = null;
+            boolean flag = false;
+            boolean flag1 = false;
+            String uid = shopCarService.findUid(orderId);
+            for (OrderCommodityEntity orderCommodity : orderCommodityList) {
+                commodity = shopCarService.findIsintegralAndBeretail(orderCommodity.getCid());
+                if (commodity != null) {
+                    if (commodity.getIsintegral() == 0) {//非积分商品
+                        flag = true;
+                    }
+                    if (commodity.getBeretail() == 1) {
+                        flag1 = true;
+                    }
+                }
+                if (orderCommodity != null) {
+                    shopCarService.addXgNum(uid, orderCommodity.getCid(), orderCommodity.getNum(), orderId);
+                }
+            }
+            if (flag) {//不是积分商品
+                OrderEntity order = shopCarService.findPrice(orderId);//把用户消费的钱加进积分
+                //分销加钱
+                shopCarService.retailMoney(orderId);
+            }
+            if (flag1) {//能够成为分销商
+                if (uid != null) {
+                    shopCarService.modifyBeRetail(uid);
+                }
+            }
+        }
     }
 }
 

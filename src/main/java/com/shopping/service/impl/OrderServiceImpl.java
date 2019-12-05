@@ -126,8 +126,8 @@ public class OrderServiceImpl implements OrderService {
     }
 
     @Override
-    public boolean findOrderExsits(String id, String orderId, String uuid) {
-        int count = orderMapper.selectOrderExsits(id, orderId, uuid);
+    public boolean findOrderExsits(String orderId, String uuid) {
+        int count = orderMapper.selectOrderExsits(orderId, uuid);
         if (count>=1){
             return true;
         }

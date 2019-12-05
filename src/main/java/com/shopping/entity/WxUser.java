@@ -23,6 +23,8 @@ public class WxUser {
 
     private Double retailMoney;
 
+    private Double money;
+
     private Date createtime;
 
 }

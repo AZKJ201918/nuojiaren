@@ -1,6 +1,5 @@
 package com.shopping.service.impl;
 
-import com.shopping.commons.constans.Constants;
 import com.shopping.commons.exception.SuperMarketException;
 import com.shopping.commons.resp.ApiResult;
 import com.shopping.dao.DetailMapper;
@@ -116,6 +115,14 @@ public class ShopCarServiceImpl implements ShopCarService{
                     Integer cid = orderCommodit.getCid();//订单中商品的id
                     Integer repertory = (Integer) hos.get("repertory:"+cid+"", "repertory");
                     System.out.println("商品取消时的库存"+repertory);
+                    String orderId = orderEntity.getOrderid();
+                    shopCarMapper.deleteWxUserXg(uuid,orderId,cid);
+                    if (repertory==null){
+                        Integer repertory1 = shopCarMapper.selectRepertory(String.valueOf(cid));
+                        String format = new SimpleDateFormat("yyyy-MM-dd").format(new Date());
+                        Integer volumn = shopCarMapper.selectVolumn(cid, format);
+                        repertory=repertory1-volumn;
+                    }
                     repertory+=orderCommodit.getNum();
                     hos.put(cid+"","repertory",repertory);
                     System.out.println("商品取消后的库存"+hos.get("repertory:"+cid+"","repertory"));
@@ -246,70 +253,107 @@ public class ShopCarServiceImpl implements ShopCarService{
         if (superiorid!=null){
             List<OrderCommodityEntity> orderCommodityList=shopCarMapper.selectOrderCommodity(orderId);
             Double totalParentMoney=0.0;
-            for (OrderCommodityEntity orderCommodity:orderCommodityList){
-                Integer id = orderCommodity.getCid();
-                Integer num = orderCommodity.getNum();
-                Integer isRetail=shopCarMapper.selectRetail(id);
-                if (isRetail==1){//是分销商品
-                    RetailEntity retail=shopCarMapper.selectRetailInfo(id);
-                    long time = retail.getOuttime().getTime();
-                    long now = new Date().getTime();
-                    if (now-time<=0){//分销没有过期
-                        Integer parenttype = retail.getParenttype();
-                        Double parent = retail.getParent();
-                        if (parenttype==1){//直接加钱
-                             totalParentMoney+=parent*num;
-                        }else {//算出优惠总价乘以分销比例
-                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
-                            String aid = commercial.getAid();
-                            System.out.println(aid);
-                            List<String> actives=detailMapper.selectActiveSortByAid(aid);
-                            System.out.println(actives);
-                            double totalPrice=0;
-                            for (String active:actives){
-                                if (priceServiceMap.get(active.trim())!=null) {
-                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+            if (orderCommodityList!=null){
+                for (OrderCommodityEntity orderCommodity:orderCommodityList){
+                    Integer id = orderCommodity.getCid();
+                    Integer num = orderCommodity.getNum();
+                    Integer isRetail=shopCarMapper.selectRetail(id);
+                    if (isRetail==1){//是分销商品
+                        RetailEntity retail=shopCarMapper.selectRetailInfo(id);
+                        long time = retail.getOuttime().getTime();
+                        long now = new Date().getTime();
+                        if (now-time<=0){//分销没有过期
+                            Integer parenttype = retail.getParenttype();
+                            Double parent = retail.getParent();
+                            if (parenttype==1){//直接加钱
+                                totalParentMoney+=parent*num;
+                            }else {//算出优惠总价乘以分销比例
+                                CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                                if (commercial!=null){
+                                    String aid = commercial.getAid();
+                                    System.out.println(aid);
+                                    if (aid!=null&&!aid.equals("")){//查看活动是否过期
+                                        long time1 = commercial.getStartTime().getTime();
+                                        long time2 = commercial.getEndTime().getTime();
+                                        long now1 = new Date().getTime();
+                                        if (now1>=time1&&now<=time2){
+                                            List<String> actives=detailMapper.selectActiveSortByAid(aid);
+                                            System.out.println(actives);
+                                            double totalPrice=0;
+                                            for (String active:actives){
+                                                if (priceServiceMap.get(active.trim())!=null) {
+                                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                                                }
+                                            }
+                                            totalParentMoney+=totalPrice*num*parent;
+                                        }else {
+                                            Integer price=detailMapper.selectPrice(id);//查商品原价
+                                            totalParentMoney=price*num*parent;
+                                        }
+                                    }else {
+                                        Integer price=detailMapper.selectPrice(id);//查商品原价
+                                        totalParentMoney=price*num*parent;
+                                    }
+                                }else {
+                                    Integer price=detailMapper.selectPrice(id);//查商品原价
+                                    totalParentMoney=price*num*parent;
                                 }
                             }
-                            totalParentMoney+=totalPrice*parent;
-                        }
 
-                    }else {//分销过期，查看全局分销
-                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
-                        Double wholeparent = wholeRetail.getWholeparent();
-                        Integer parenttype = wholeRetail.getParenttype();
-                        if (parenttype==1){//直接加钱
-                            totalParentMoney+=wholeparent*num;
-                        }else {
-                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
-                            String aid = commercial.getAid();
-                            System.out.println(aid);
-                            List<String> actives=detailMapper.selectActiveSortByAid(aid);
-                            System.out.println(actives);
-                            double totalPrice=0;
-                            for (String active:actives){
-                                if (priceServiceMap.get(active.trim())!=null) {
-                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                        }else {//分销过期，查看全局分销
+                            WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
+                            Double wholeparent = wholeRetail.getWholeparent();
+                            Integer parenttype = wholeRetail.getParenttype();
+                            if (parenttype==1){//直接加钱
+                                totalParentMoney+=wholeparent*num;
+                            }else {
+                                CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                                if (commercial!=null){
+                                    String aid = commercial.getAid();
+                                    System.out.println(aid);
+                                    if (aid!=null&&!aid.equals("")){
+                                        List<String> actives=detailMapper.selectActiveSortByAid(aid);
+                                        System.out.println(actives);
+                                        long time1 = commercial.getStartTime().getTime();
+                                        long time2 = commercial.getEndTime().getTime();
+                                        long now1 = new Date().getTime();
+                                        if (now1>=time1&&now1<=time2){
+                                            double totalPrice=0;
+                                            for (String active:actives){
+                                                if (priceServiceMap.get(active.trim())!=null) {
+                                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                                                }
+                                            }
+                                            totalParentMoney+=totalPrice*num*wholeparent;
+                                        }else {
+                                            Integer price=detailMapper.selectPrice(id);//查商品原价
+                                            totalParentMoney=price*num*wholeparent;
+                                        }
+                                    } else {
+                                        Integer price=detailMapper.selectPrice(id);//查商品原价
+                                        totalParentMoney=price*num*wholeparent;
+                                    }
+                                }else {
+                                    Integer price=detailMapper.selectPrice(id);//查商品原价
+                                    totalParentMoney=price*num*wholeparent;
                                 }
                             }
-                            totalParentMoney+=totalPrice*wholeparent;
                         }
                     }
                 }
+                if (totalParentMoney!=0){
+                    shopCarMapper.updateRetailMoney(totalParentMoney,superiorid);
+                    String wxname=shopCarMapper.selectWxname(uid);
+                    String content=wxname+"为你获得"+String.format("%.2f",totalParentMoney)+"佣金";
+                    RetailWater retailWater = new RetailWater();
+                    retailWater.setOrderid(orderId);
+                    retailWater.setCreatetime(new Date());
+                    retailWater.setUuid(superiorid);
+                    retailWater.setContent(content);
+                    shopCarMapper.insertRetailWater(retailWater);
+                    System.out.println(totalParentMoney);
+                }
             }
-            if (totalParentMoney!=0){
-                shopCarMapper.updateRetailMoney(totalParentMoney,superiorid);
-                String wxname=shopCarMapper.selectWxname(uid);
-                String content=wxname+"为你获得"+String.format("%.2f",totalParentMoney)+"佣金";
-                RetailWater retailWater = new RetailWater();
-                retailWater.setOrderid(orderId);
-                retailWater.setCreatetime(new Date());
-                retailWater.setUuid(superiorid);
-                retailWater.setContent(content);
-                shopCarMapper.insertRetailWater(retailWater);
-                System.out.println(totalParentMoney);
-            }
-
         }else {//没有上级
             return;
         }
@@ -318,66 +362,104 @@ public class ShopCarServiceImpl implements ShopCarService{
         if (bigSuperiorid!=null){
             List<OrderCommodityEntity> orderCommodityList=shopCarMapper.selectOrderCommodity(orderId);
             Double totalGrandMoney=0.0;
-            for (OrderCommodityEntity orderCommodity:orderCommodityList){
-                Integer id = orderCommodity.getCid();
-                Integer num = orderCommodity.getNum();
-                Integer isRetail=shopCarMapper.selectRetail(id);
-                if (isRetail==1){//是分销商品
-                    RetailEntity retail=shopCarMapper.selectRetailInfo(id);
-                    long time = retail.getOuttime().getTime();
-                    long now = new Date().getTime();
-                    if (now-time<=0){//分销没有过期
-                        Integer grandtype = retail.getGrandtype();
-                        Double grand = retail.getGrand();
-                        if (grandtype==1){//直接加钱
-                            totalGrandMoney+=grand*num;
-                        }else {//算出优惠总价乘以分销比例
-                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
-                            String aid = commercial.getAid();
-                            System.out.println(aid);
-                            List<String> actives=detailMapper.selectActiveSortByAid(aid);
-                            System.out.println(actives);
-                            double totalPrice=0;
-                            for (String active:actives){
-                                if (priceServiceMap.get(active.trim())!=null) {
-                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+            if (orderCommodityList!=null){
+                for (OrderCommodityEntity orderCommodity:orderCommodityList){
+                    Integer id = orderCommodity.getCid();
+                    Integer num = orderCommodity.getNum();
+                    Integer isRetail=shopCarMapper.selectRetail(id);
+                    if (isRetail==1){//是分销商品
+                        RetailEntity retail=shopCarMapper.selectRetailInfo(id);
+                        long time = retail.getOuttime().getTime();
+                        long now = new Date().getTime();
+                        if (now-time<=0){//分销没有过期
+                            Integer grandtype = retail.getGrandtype();
+                            Double grand = retail.getGrand();
+                            if (grandtype==1){//直接加钱
+                                totalGrandMoney+=grand*num;
+                            }else {//算出优惠总价乘以分销比例
+                                CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                                if (commercial!=null){
+                                    String aid = commercial.getAid();
+                                    System.out.println(aid);
+                                    if (aid!=null&&!aid.equals("")){
+                                        List<String> actives=detailMapper.selectActiveSortByAid(aid);
+                                        long time1 = commercial.getStartTime().getTime();
+                                        long time2 = commercial.getEndTime().getTime();
+                                        long now1 = new Date().getTime();
+                                        System.out.println(actives);
+                                        double totalPrice=0;
+                                        if (now1>=time1&&now1<=time2){
+                                            for (String active:actives){
+                                                if (priceServiceMap.get(active.trim())!=null) {
+                                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                                                }
+                                            }
+                                            totalGrandMoney+=totalPrice*num*grand;
+                                        }else {
+                                            Integer price = detailMapper.selectPrice(id);
+                                            totalGrandMoney+=price*num*grand;
+                                        }
+                                    } else {
+                                        Integer price = detailMapper.selectPrice(id);
+                                        totalGrandMoney+=price*num*grand;
+                                    }
+                                }else {
+                                    Integer price = detailMapper.selectPrice(id);
+                                    totalGrandMoney+=price*num*grand;
                                 }
                             }
-                            totalGrandMoney+=totalPrice*grand;
-                        }
-                    }else {//分销过期，查看全局分销
-                        WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
-                        Double wholegrand = wholeRetail.getWholegrand();
-                        Integer grandtype = wholeRetail.getGrandtype();
-                        if (grandtype==1){//直接加钱
-                            totalGrandMoney+=wholegrand*num;
-                        }else {
-                            CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
-                            String aid = commercial.getAid();
-                            System.out.println(aid);
-                            List<String> actives=detailMapper.selectActiveSortByAid(aid);
-                            System.out.println(actives);
-                            double totalPrice=0;
-                            for (String active:actives){
-                                if (priceServiceMap.get(active.trim())!=null) {
-                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                        }else {//分销过期，查看全局分销
+                            WholeRetailEntity wholeRetail=shopCarMapper.selectWholeRetail();
+                            Double wholegrand = wholeRetail.getWholegrand();
+                            Integer grandtype = wholeRetail.getGrandtype();
+                            if (grandtype==1){//直接加钱
+                                totalGrandMoney+=wholegrand*num;
+                            }else {
+                                CommercialEntity commercial=detailMapper.selectActiveById(String.valueOf(id));
+                                if (commercial!=null){
+                                    String aid = commercial.getAid();
+                                    System.out.println(aid);
+                                    List<String> actives=detailMapper.selectActiveSortByAid(aid);
+                                    if (aid!=null&&!aid.equals("")){
+                                        long time1 = commercial.getStartTime().getTime();
+                                        long time2 = commercial.getEndTime().getTime();
+                                        long now1 = new Date().getTime();
+                                        System.out.println(actives);
+                                        double totalPrice=0;
+                                        if (now1>=time1&&now1<=time2){
+                                            for (String active:actives){
+                                                if (priceServiceMap.get(active.trim())!=null) {
+                                                    totalPrice = priceServiceMap.get(active.trim()).countPrice(String.valueOf(id), num, totalPrice);
+                                                }
+                                            }
+                                            totalGrandMoney+=totalPrice*wholegrand;
+                                        }else {
+                                            Integer price = detailMapper.selectPrice(id);
+                                            totalGrandMoney+=price*num*wholegrand;
+                                        }
+                                    }else {
+                                        Integer price = detailMapper.selectPrice(id);
+                                        totalGrandMoney+=price*num*wholegrand;
+                                    }
+                                }else {
+                                    Integer price = detailMapper.selectPrice(id);
+                                    totalGrandMoney+=price*num*wholegrand;
                                 }
                             }
-                            totalGrandMoney+=totalPrice*wholegrand;
                         }
                     }
                 }
-            }
-            if (totalGrandMoney!=0){
-                shopCarMapper.updateRetailMoney(totalGrandMoney,bigSuperiorid);
-                String wxname = shopCarMapper.selectWxname(superiorid);
-                String content=wxname+"的下级为你获得"+String.format("%.2f",totalGrandMoney)+"佣金";
-                RetailWater retailWater = new RetailWater();
-                retailWater.setUuid(bigSuperiorid);
-                retailWater.setContent(content);
-                retailWater.setOrderid(orderId);
-                retailWater.setCreatetime(new Date());
-                shopCarMapper.insertRetailWater(retailWater);
+                if (totalGrandMoney!=0){
+                    shopCarMapper.updateRetailMoney(totalGrandMoney,bigSuperiorid);
+                    String wxname = shopCarMapper.selectWxname(superiorid);
+                    String content=wxname+"的下级为你获得"+String.format("%.2f",totalGrandMoney)+"佣金";
+                    RetailWater retailWater = new RetailWater();
+                    retailWater.setUuid(bigSuperiorid);
+                    retailWater.setContent(content);
+                    retailWater.setOrderid(orderId);
+                    retailWater.setCreatetime(new Date());
+                    shopCarMapper.insertRetailWater(retailWater);
+                }
             }
         }else {//没有上上级
             return;
@@ -414,6 +496,39 @@ public class ShopCarServiceImpl implements ShopCarService{
     @Override
     public void addRecord(Map<String, Integer> map) {
         Date date = new Date();
-        shopCarMapper.insertRecord(map,date);
+        long time = date.getTime();
+        long l = time - 86400000;
+        Date date1 = new Date(l);
+        Integer visit = map.get("visitCount");
+        Integer register = map.get("registerCount");
+        shopCarMapper.insertRecord(visit,register,date1);
+    }
+
+    @Override
+    public void signRecieveOrders() {
+        List<OrderEntity> orderList=shopCarMapper.selectOutRecieveOrders();
+        if (orderList!=null){
+            for (OrderEntity order:orderList){
+                if (order!=null){
+                    if ( order.getSendouttime()!=null){
+                        long time =order.getSendouttime().getTime();
+                        long now = new Date().getTime();
+                        if (now>=time){
+                            shopCarMapper.updateOrderRecieve (order.getOrderid());
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    @Override
+    public void addXgNum(String uid, Integer cid, Integer num, String orderId) {
+        shopCarMapper.insertXgNum(uid,cid,num,orderId);
+    }
+
+    @Override
+    public void removeWxUserXg(String uuid, String orderId, Integer cid) {
+        shopCarMapper.deleteWxUserXg(uuid,orderId,cid);
     }
 }

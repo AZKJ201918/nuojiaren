@@ -29,7 +29,7 @@ public class PrePayDemo {
 			jsonParam.put("terminal_id", posPrePay.getTerminal_id());
 			jsonParam.put("terminal_trace", posPrePay.getTerminal_trace());
 			jsonParam.put("terminal_time", posPrePay.getTerminal_time());
-			jsonParam.put("total_fee", 1);
+			jsonParam.put("total_fee", posPrePay.getTotal_fee());
 			jsonParam.put("order_body", posPrePay.getOrder_body());
 			jsonParam.put("notify_url",posPrePay.getNotify_url());
 			jsonParam.put("open_id",posPrePay.getOperator_id());
@@ -37,7 +37,7 @@ public class PrePayDemo {
 			String parm = "pay_ver=" + posPrePay.getPay_ver() + "&pay_type=" + posPrePay.getPay_type() + "&service_id="
 					+ posPrePay.getService_id() + "&merchant_no=" + posPrePay.getMerchant_no() + "&terminal_id="
 					+ posPrePay.getTerminal_id() + "&terminal_trace=" + posPrePay.getTerminal_trace()
-					+ "&terminal_time=" + posPrePay.getTerminal_time() + "&total_fee=" + 1
+					+ "&terminal_time=" + posPrePay.getTerminal_time() + "&total_fee=" + posPrePay.getTotal_fee()
 					// +"&order_body="+posPrePay.getOrder_body()
 					+ "&access_token=" +access_token;
 			String sign = MD5.sign(parm, "utf-8");

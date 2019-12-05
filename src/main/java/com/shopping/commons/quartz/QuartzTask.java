@@ -36,6 +36,8 @@ public class QuartzTask {
         System.out.println("执行完成2");*/
         System.out.println("执行任务2");
         shopCarService.modifyWater();
+        //定时签收订单
+        shopCarService.signRecieveOrders();
         Map<String, Integer> map = homePageController.visitVolume();
         if (map!=null){
             shopCarService.addRecord(map);

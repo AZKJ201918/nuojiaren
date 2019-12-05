@@ -1,3 +1,4 @@
+
 package com.shopping.controller;
 
 import com.shopping.commons.constans.Constants;
@@ -138,7 +139,8 @@ public class IntegralCommodityController {
                     }
                     throw new SuperMarketException("你的积分不够");
                 }
-                /*Integer num = integralCommodity.getNum();//限购的次数
+
+               /* Integer num = integralCommodity.getNum();//限购的次数
                 Integer count = integralCommodityService.findChangeNum(id, uuid);//找已经换购的次数
                 if (count >= num) {
                     if (lock!=null){
@@ -203,11 +205,14 @@ public class IntegralCommodityController {
                     Integer reper = (Integer) hos.get("repertory:"+id + "", "repertory");
                     if (reper == null) {
                         reper = shopCarService.findRepertory(id + "");
+                        if (reper==null){
+                            reper=0;
+                        }
                         Integer volumn = shopCarService.findVolumn(id);
                         reper-=volumn;
                     }
                     if (reper < 1) {
-                        orderService.modifyCommodityStatus(String.valueOf(id));
+                        orderService.modifyCommodityStatus(String.valueOf(id));//商品下架
                     }
                     reper -= 1;
                     hos.put("repertory:"+id + "", "repertory", reper);//扣除库存
@@ -250,3 +255,4 @@ public class IntegralCommodityController {
         return result;
     }
 }
+

@@ -36,7 +36,7 @@ public interface OrderService {
 
     void modifyCommodityStatus(String id);
 
-    boolean findOrderExsits(String id, String orderId, String uuid);
+    boolean findOrderExsits(String orderId, String uuid);
 
     AddressEntity findAddressIdExsits(String uuid, Integer addressid);
 

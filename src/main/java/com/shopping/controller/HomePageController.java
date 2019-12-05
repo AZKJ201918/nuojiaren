@@ -12,6 +12,7 @@ import com.shopping.entity.OptionEntity;
 import com.shopping.entity.WxUser;
 import com.shopping.service.HomePageService;
 import com.shopping.util.JsonUtils;
+import com.shopping.util.UUIDUtils;
 import com.shopping.util.UrlUtils;
 import com.shopping.util.getOpenIdutil;
 import com.sun.jndi.toolkit.url.UrlUtil;
@@ -159,7 +160,10 @@ public class HomePageController {
             String nickName = userMap.get("nickName");
             String headimgurl = userMap.get("avatarUrl");
             ValueOperations ops = redisTemplate.opsForValue();
-            String userUUID = findUser.getUuid();
+            String userUUID =null;
+            if (findUser!=null){
+               userUUID=findUser.getUuid();
+            }
             if(userUUID != null){//用户信息已经初始化
                 log.info("openId已经存在,不需要插入");
                 WxUser user1 = new WxUser();
@@ -205,7 +209,7 @@ public class HomePageController {
                 }
                 ops.set("uuid:"+userUUID,userUUID,15L, TimeUnit.MINUTES);
             }else{//用户没有初始化
-                String wxUserId = UUID.randomUUID().toString().replaceAll("-", "");//用户id
+                String wxUserId = UUIDUtils.generateMost22UUID();//用户id
                 log.info("openId不存在,插入数据库");
                 //对encryptedData用户数据加解密
                 //String encryptedData = reqMap.get("encryptedData");
@@ -259,7 +263,7 @@ public class HomePageController {
         }
                 return result;
         }
-        @ApiOperation(value = "假登录")
+
         @ApiImplicitParam
         @PostMapping("/login1")
         public void login1(String uuid){

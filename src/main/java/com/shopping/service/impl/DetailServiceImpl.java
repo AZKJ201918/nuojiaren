@@ -22,15 +22,17 @@ public class DetailServiceImpl implements DetailService{
     @Override
     public List<CommodityEntity> findDetailById(String id) {
         List<CommodityEntity> commodityList = detailMapper.selectDetailById(id);
-        for (CommodityEntity commodity:commodityList){
-            CommercialEntity commercial= homePageMapper.selectActiveByCid(Integer.parseInt(id));
+        if (commodityList!=null){
+            for (CommodityEntity commodity:commodityList){
+                CommercialEntity commercial= homePageMapper.selectActiveByCid(Integer.parseInt(id));
            /* String[] split = commercial.getAid().split(",");
             for (String aid:split){
                 if (aid.equals("1")){
                     CommercialEntity commercialEntity = priceMapper.selectPrice(aid);
                 }
             }*/
-           commodity.setCommercial(commercial);
+                commodity.setCommercial(commercial);
+            }
         }
         return commodityList;
     }
@@ -53,5 +55,15 @@ public class DetailServiceImpl implements DetailService{
     @Override
     public int addOrderCommodity(String orderId, String id, Integer num) {
         return detailMapper.insertOrderCommodity(orderId,id,num);
+    }
+
+    @Override
+    public Integer findCommodityNum(String id1) {
+        return detailMapper.selectCommodityNum(id1);
+    }
+
+    @Override
+    public Integer findXgNum(String id1, String uuid) {
+        return detailMapper.selectXgNum(id1,uuid);
     }
 }
